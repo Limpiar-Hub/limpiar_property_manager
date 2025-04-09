@@ -34,5 +34,13 @@
   body {
     @apply bg-background text-foreground;
   }
+  @layer components {
+    .modal-heading {
+      @apply text-[color:var(--Neutral-Neutral500,#696E7E)] text-sm not-italic font-normal leading-[140%];
+    }
+    .modal.subheading {
+      @apply text-[color:var(--Neutral-Neutral500,#101113)] text-sm not-italic font-normal leading-[140%];
+    }
 }
+
 
