@@ -21,7 +21,7 @@ import { PropertyRequestModal } from "@/components/property/property-request-mod
 import AdminProfile from "@/components/adminProfile";
 const IMAGE_BASE_URL =
   process.env.NEXT_PUBLIC_IMAGE_URL ||
-  "https://limpiar-backend.onrender.com/api/properties/gridfs/files/:id";
+  "https://limpiar-backend.onrender.com/api/properties/gridfs/files/";
 
 interface Property {
   propertyOwnerId: string;
@@ -63,16 +63,15 @@ export default function PropertyPage() {
       }
 
       const response = await fetchProperties(token);
-      setProperties(response.data || []);
-      console.log(properties);
-      if (!properties) return null;
-      const propertiesWithImageUrls = properties.map((property) => ({
+      console.log(response.data);
+      const propertiesWithImageUrls = response.data.map((property: any) => ({
         ...property,
         images:
           property.images?.map(
             (imageId: any) => `${IMAGE_BASE_URL}${imageId}`
           ) || [],
       }));
+
       setProperties(propertiesWithImageUrls);
     } catch (error) {
       console.error("Error fetching properties:", error);
@@ -93,6 +92,7 @@ export default function PropertyPage() {
 
   useEffect(() => {
     fetchPropertiesList();
+    console.log(properties);
   }, [fetchPropertiesList]);
 
   // Update the handlePropertyClick function to fetch property details
@@ -394,7 +394,6 @@ export default function PropertyPage() {
                       className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer"
                       onClick={() => handlePropertyClick(property)}
                     >
-                      {" "}
                       <td className="py-3 px-4">
                         <input
                           type="checkbox"
@@ -416,21 +415,45 @@ export default function PropertyPage() {
                         {property.address}
                       </td>
                       <td className="py-4 px-4 text-sm text-gray-500">
-                        {property.size}
+                        {property.images.length > 0 ? (
+                          <div className="flex items-center relative">
+                            <div className="flex -space-x-4">
+                              {property.images.slice(0, 2).map((img, index) => (
+                                <img
+                                  key={index}
+                                  src={img}
+                                  alt={`Property ${index + 1}`}
+                                  className="w-16 h-16 object-cover rounded-md border-2 border-white"
+                                />
+                              ))}
+                            </div>
+                            <span className="ml-8 text-black">
+                              +{property.images.length}
+                            </span>
+                          </div>
+                        ) : (
+                          <span>No Image</span>
+                        )}
                       </td>
+
                       <td className="py-4 px-4 text-sm text-gray-500">
                         {new Date(property.createdAt).toLocaleDateString()}
                       </td>
                       <td
-                        className="py-4 px-4"
+                        className="py-4 px-4 "
                         onClick={(e) => e.stopPropagation()}
                       >
                         {property.status === "pending" && (
                           <button
-                            className="text-sm text-[#0082ed] hover:underline"
-                            onClick={() => handleVerifyProperty(property)}
+                            className="text-sm  hover:underline border rounded-md px-4 py-1"
+                            onClick={() =>
+                              handleVerifyProperty(
+                                property._id,
+                                property.propertyManagerId
+                              )
+                            }
                           >
-                            Verify
+                            Approve
                           </button>
                         )}
                       </td>
