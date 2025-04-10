@@ -65,12 +65,6 @@ export function BookingRequestModal({
           ) : (
             <>
               <h2 className="text-xl font-semibold">Booking Request</h2>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <X className="h-5 w-5" />
-              </button>
             </>
           )}
         </div>

@@ -137,7 +137,7 @@ export default function BookingPage() {
         ...selectedBooking,
         status: "Not Started" as const,
         timeline: [
-          ...selectedBooking.timeline,
+          ...(selectedBooking.timeline ?? []), // Fix: fallback to empty array if timeline is undefined/null
           {
             date: "Saturday, 11 June 2025",
             time: "11:50 am",
@@ -150,6 +150,7 @@ export default function BookingPage() {
       };
       setSelectedBooking(updatedBooking);
       setShowAssignButton(true);
+      console.log("To assigning business", updatedBooking);
     }
   };
 
@@ -165,7 +166,7 @@ export default function BookingPage() {
         cleaningBusiness: businessName,
         status: "Active" as const,
         timeline: [
-          ...selectedBooking.timeline,
+          ...(selectedBooking.timeline ?? []), // Fallback to an empty array if timeline is undefined
           {
             date: "Saturday, 11 June 2025",
             time: "11:50 am",
@@ -181,6 +182,7 @@ export default function BookingPage() {
       setIsAssignModalOpen(false);
     }
   };
+  
 
   const getStatusColor = (status: string) => {
     switch (status) {
