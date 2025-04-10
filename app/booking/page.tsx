@@ -203,7 +203,7 @@ export default function BookingPage() {
     booking.serviceType.toLowerCase().startsWith(searchQuery.toLowerCase())
   );
 
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const rowsPerPage = 5;
   const totalPages = Math.ceil(searchedBookings.length / rowsPerPage);
   const paginatedBookings = searchedBookings.slice(
     (currentPage - 1) * rowsPerPage,
@@ -211,9 +211,9 @@ export default function BookingPage() {
   );
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-white">
+    <div className="flex flex-col  min-h-screen bg-white">
       <Sidebar />
-      <div className="flex-1 p-4 lg:p-8 lg:ml-[240px]">
+      <div className="flex-1  p-4 lg:p-8 lg:ml-[240px]">
         <div className="flex justify-end items-center mb-4">
           <AdminProfile />
         </div>
