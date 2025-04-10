@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { SetStateAction, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { Bell, ChevronDown, Mail, X } from "lucide-react";
 import AdminProfile from "@/components/adminProfile";
+import UserPermissionsModal from "@/components/setting/Setting-modal";
 
 interface Property {
   _id: string;
@@ -40,11 +41,16 @@ export default function PropertyPage() {
   const [userModal, setUserModal] = useState(false);
   const [theme, setTheme] = useState("Light");
   const toggleTab = (tab: string) => setTab(tab);
+  const [selectedUser, setSelectedUser] = useState(null);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedLanguage(e.target.value);
   };
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
+  const handleUserClick = (user) => {
+    setUserModal(true);
+    setSelectedUser(user);
+    console.log("clicked");
+  };
   return (
     <div className="flex flex-col  min-h-screen bg-white">
       <Sidebar />
@@ -59,7 +65,7 @@ export default function PropertyPage() {
 
             <div className="flex gap-8 md:gap-12 mt-8 ">
               <div className="flex-2  flex flex-col gap-2">
-                <div className="flex h-10 items-center gap-3 px-4 py-0 cursor-pointer">
+                <div className="flex h-10 items-center justify-start gap-3 px-2 md:px-4 py-0 cursor-pointer">
                   <p
                     className={`text-base font-medium ${
                       tab === "General" ? "text-black" : "text-gray-500"
@@ -214,28 +220,13 @@ export default function PropertyPage() {
                   </div>
                 </div>
               )}
-              {/* {userModal && (
-              <div className="fixed justify-end inset-0 bg-black bg-opacity-50 h-screen flex items-center ">
-                <div className="bg-white h-screen flex justify-between  p-4 rounded-md shadow-md">
-                  <div>
-                    {" "}
-                    <h2 className="text-lg font-semibold">User Details</h2>
-                  </div>
-                  <div>
-                    <button
-                      onClick={() => setUserModal(false)}
-                      className="absolute top-6 right-4"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>{" "}
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Mail className="h-4 w-4" />
-                    <span>fermi@gmsil.com</span>
-                  </div>
-                </div>
-              </div>
-            )} */}
+              {userModal && (
+                <UserPermissionsModal
+                  isOpen={userModal}
+                  onClose={() => setUserModal(false)}
+                  user={selectedUser} // optional if modal needs user data
+                />
+              )}
             </div>
           </div>
         </div>
@@ -243,3 +234,7 @@ export default function PropertyPage() {
     </div>
   );
 }
+function setSelectedUser(user: any) {
+  throw new Error("Function not implemented.");
+}
+
