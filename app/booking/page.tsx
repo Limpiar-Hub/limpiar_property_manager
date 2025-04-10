@@ -109,7 +109,7 @@ export default function BookingPage() {
   useEffect(() => {
     fetchBookingList();
   }, [fetchBookingList]);
-
+console.log(bookings, "bookings");
   useEffect(() => {
     const tabWiseBookings = bookings.filter((booking) => {
       if (activeTab === "pending") {
