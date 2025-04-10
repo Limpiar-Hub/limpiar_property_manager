@@ -115,18 +115,18 @@ export function PropertyDetailsModal({
     const [selectedImage, setSelectedImage] = useState(images[0] || "");
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-[600px] justify-end max-h-[90vh] overflow-y-auto scrollbar-hide">
+        <DialogContent className="sm:max-w-[600px] justify-start max-h-[100vh] overflow-y-auto scrollbar-hide">
           <div className="flex flex-col  border-b">
             <h2 className="text-xl font-semibold">
               {status === "pending" ? "Property Request" : "Property Details"}
             </h2>
-            <div className="flex gap-2 w-full">
+            <div className="flex gap-2 max-w-full">
               {/* Main Image */}
-              <div className="w-3/4 relative mt-4">
+              <div className="max-w-[75%] relative mt-4">
                 <img
                   src={selectedImage.replace(":id", "")}
                   alt={name}
-                  className="w-full h-72 object-cover rounded-lg"
+                  className="w-full max-h-72 object-cover rounded-lg"
                 />
               </div>
 
@@ -192,14 +192,14 @@ export function PropertyDetailsModal({
 
                   <div>
                     <h3 className="text-sm text-gray-500">Property Type</h3>
-                    <p className="font-medium">
-                      {property.type} - {property.subtype}
-                    </p>
+                    <p className="font-medium">{property.type}</p>
                   </div>
 
                   <div>
                     <h3 className="text-sm text-gray-500">Location</h3>
-                    <p className="font-medium">{property.location}</p>
+                    <p className="font-medium">
+                      {"_id" in property ? property.address : property.location}
+                    </p>
                   </div>
 
                   {/* <div>

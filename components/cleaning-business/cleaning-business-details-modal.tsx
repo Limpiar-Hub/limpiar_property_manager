@@ -39,15 +39,15 @@ const mockTasks: Task[] = [
 export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: CleaningBusinessDetailsModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
-        <div className="flex justify-end items-center mb-4">
+      <DialogContent className="sm:max-w-[425px] justify-end max-h-[90vh] overflow-y-auto scrollbar-hide">
+        <div className="flex justify-between gap-4 items-center mb-4">
           <h2 className="text-lg font-semibold">Cleaning Business Details</h2>
           <div className="flex space-x-2">
             <button className="p-2 hover:bg-gray-100 rounded-full">
               <Pencil className="h-5 w-5 text-gray-500" />
             </button>
             <button className="p-2 hover:bg-gray-100 rounded-full">
-              <Trash2 className="h-5 w-5 text-gray-500" />
+              <Trash2 className="h-5 w-5 text-red-500 bg-red-300" />
             </button>
           </div>
         </div>

@@ -10,7 +10,6 @@ import { AssignBusinessModal } from "@/components/cleaning-business/assign-busin
 import { toast } from "@/hooks/use-toast";
 import { fetchBookings } from "@/services/booking-service";
 import AdminProfile from "@/components/adminProfile";
-//import { AssignBusinessModal } from "@/components/booking/assign-business-modal"
 
 interface Booking {
   _id: ReactNode;
@@ -48,156 +47,6 @@ interface Booking {
   }>;
 }
 
-// const bookings: Booking[] = [
-//   {
-//     id: "Hospital",
-//     type: "Hospital",
-//     propertyManager: {
-//       name: "Jerome Bell",
-//     },
-//     property: "Elite Enclave",
-//     service: "Janitorial",
-//     amount: "$ 100.00",
-//     date: "11 June, 2025",
-//     time: "7:30 AM - 8:30 AM",
-//     additionalNote:
-//       "Physiological respiration involves the mechanisms that ensure that the composition of the functional",
-//     status: "Pending",
-//     timeline: [
-//       {
-//         date: "Saturday, 11 June 2025",
-//         time: "11:50 am",
-//         event: "Booking requested by",
-//         user: {
-//           name: "Jerome Bell",
-//         },
-//       },
-//     ],
-//   },
-//   {
-//     id: "Warehouse",
-//     type: "Warehouse",
-//     propertyManager: {
-//       name: "Jane Smith",
-//     },
-//     property: "Horizon Heights",
-//     service: "Cleaning",
-//     amount: "$ 85.00",
-//     date: "12 June, 2025",
-//     time: "9:00 AM - 11:00 AM",
-//     additionalNote: "Regular cleaning service for the warehouse facility",
-//     status: "Pending",
-//     timeline: [
-//       {
-//         date: "Sunday, 12 June 2025",
-//         time: "10:15 am",
-//         event: "Booking requested by",
-//         user: {
-//           name: "Jane Smith",
-//         },
-//       },
-//     ],
-//   },
-//   {
-//     id: "Corporate",
-//     type: "Corporate",
-//     propertyManager: {
-//       name: "Michael Johnson",
-//     },
-//     property: "Prestige Park Place",
-//     service: "Office Cleaning",
-//     amount: "$ 150.00",
-//     date: "13 June, 2025",
-//     time: "6:00 PM - 9:00 PM",
-//     additionalNote: "After-hours cleaning service for corporate offices",
-//     status: "Pending",
-//     timeline: [
-//       {
-//         date: "Monday, 13 June 2025",
-//         time: "2:30 pm",
-//         event: "Booking requested by",
-//         user: {
-//           name: "Michael Johnson",
-//         },
-//       },
-//     ],
-//   },
-//   {
-//     id: "School",
-//     type: "School",
-//     propertyManager: {
-//       name: "Emily Davis",
-//     },
-//     property: "Premier Plaza",
-//     service: "Deep Cleaning",
-//     amount: "$ 200.00",
-//     date: "14 June, 2025",
-//     time: "8:00 AM - 4:00 PM",
-//     additionalNote: "Weekend deep cleaning for all classrooms and common areas",
-//     status: "Pending",
-//     timeline: [
-//       {
-//         date: "Tuesday, 14 June 2025",
-//         time: "9:45 am",
-//         event: "Booking requested by",
-//         user: {
-//           name: "Emily Davis",
-//         },
-//       },
-//     ],
-//   },
-//   {
-//     id: "Industrial",
-//     type: "Industrial",
-//     propertyManager: {
-//       name: "Robert Wilson",
-//     },
-//     property: "Downtown Dwell",
-//     service: "Industrial Cleaning",
-//     amount: "$ 300.00",
-//     date: "15 June, 2025",
-//     time: "7:00 AM - 3:00 PM",
-//     additionalNote:
-//       "Heavy-duty cleaning for industrial equipment and facilities",
-//     status: "Pending",
-//     timeline: [
-//       {
-//         date: "Wednesday, 15 June 2025",
-//         time: "11:20 am",
-//         event: "Booking requested by",
-//         user: {
-//           name: "Robert Wilson",
-//         },
-//       },
-//     ],
-//   },
-//   {
-//     id: "University",
-//     type: "University",
-//     propertyManager: {
-//       name: "Sarah Brown",
-//     },
-//     property: "Summit Square",
-//     service: "Campus Cleaning",
-//     amount: "$ 250.00",
-//     date: "16 June, 2025",
-//     time: "6:30 AM - 2:30 PM",
-//     additionalNote:
-//       "Comprehensive cleaning service for university campus buildings",
-//     status: "Pending",
-//     timeline: [
-//       {
-//         date: "Thursday, 16 June 2025",
-//         time: "10:05 am",
-//         event: "Booking requested by",
-//         user: {
-//           name: "Sarah Brown",
-//         },
-//       },
-//     ],
-//   },
-// ];
-
 export default function BookingPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "inactive">(
     "pending"
@@ -208,13 +57,12 @@ export default function BookingPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [showAssignButton, setShowAssignButton] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
-  const [currentPage, setCurrentPage] = useState(1); // Add currentPage state
+  const [currentPage, setCurrentPage] = useState(1);
+
   const fetchBookingList = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -230,18 +78,17 @@ export default function BookingPage() {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Include the token in the Authorization header
+            Authorization: `Bearer ${token}`,
           },
         }
       );
-      console.log(response);
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log(data.data);
-      setBookings(data.data || []); // Assuming the data structure contains a "data" key
+      setBookings(data.data || []);
     } catch (error) {
       console.error("Error fetching bookings:", error);
       setError(
@@ -261,8 +108,19 @@ export default function BookingPage() {
 
   useEffect(() => {
     fetchBookingList();
-    console.log(bookings);
   }, [fetchBookingList]);
+
+  useEffect(() => {
+    const tabWiseBookings = bookings.filter((booking) => {
+      if (activeTab === "pending") {
+        return booking.status === "Pending";
+      } else if (activeTab === "active") {
+        return booking.status === "Confirmed";
+      }
+      return booking.status !== "Pending" && booking.status !== "Confirmed";
+    });
+    setFilteredBookings(tabWiseBookings);
+  }, [activeTab, bookings]);
 
   const handleBookingClick = (booking: Booking) => {
     setSelectedBooking(booking);
@@ -272,22 +130,9 @@ export default function BookingPage() {
       setIsDetailsModalOpen(true);
     }
   };
-  useEffect(() => {
-    const tabWiseBookings = bookings.filter((booking) => {
-      if (activeTab === "pending") {
-        return booking.status === "Pending";
-      } else if (activeTab === "active") {
-        return booking.status === "Confirmed";
-      }
-
-      return booking.status !== "Pending" && booking.status !== "Confirmed";
-    });
-    setFilteredBookings(tabWiseBookings);
-  }, [activeTab, bookings]);
 
   const handleApproveBooking = () => {
     if (selectedBooking) {
-      // Update booking status and add timeline event
       const updatedBooking = {
         ...selectedBooking,
         status: "Not Started" as const,
@@ -315,7 +160,6 @@ export default function BookingPage() {
 
   const handleAssignBusiness = (businessName: string) => {
     if (selectedBooking) {
-      // Update booking with assigned business
       const updatedBooking = {
         ...selectedBooking,
         cleaningBusiness: businessName,
@@ -333,7 +177,6 @@ export default function BookingPage() {
           },
         ],
       };
-      // Update bookings list
       setSelectedBooking(updatedBooking);
       setIsAssignModalOpen(false);
     }
@@ -355,10 +198,12 @@ export default function BookingPage() {
         return "bg-gray-50 text-gray-800";
     }
   };
+
   const searchedBookings = filteredBookings.filter((booking) =>
     booking.serviceType.toLowerCase().startsWith(searchQuery.toLowerCase())
   );
-  const rowsPerPage = 5; // Define rowsPerPage with a default value
+
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const totalPages = Math.ceil(searchedBookings.length / rowsPerPage);
   const paginatedBookings = searchedBookings.slice(
     (currentPage - 1) * rowsPerPage,
@@ -366,13 +211,13 @@ export default function BookingPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-white">
       <Sidebar />
-      <div className="flex-1 ml-[240px]">
-        <div className="flex justify-end items-center gap-4 p-4">
+      <div className="flex-1 p-4 lg:p-8 lg:ml-[240px]">
+        <div className="flex justify-end items-center mb-4">
           <AdminProfile />
         </div>
-        <div className="p-8">
+        <div className="flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-semibold">Booking</h1>
             <div className="flex items-center gap-4">
@@ -381,7 +226,7 @@ export default function BookingPage() {
                 <input
                   type="search"
                   placeholder="Search"
-                  className="pl-10 pr-4 py-2 w-[240px] rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed] focus:border-transparent"
+                  className="pl-10 pr-4 py-2 w-full max-w-[240px] rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed] focus:border-transparent"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -395,7 +240,7 @@ export default function BookingPage() {
 
           <div className="mb-6">
             <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
+              <nav className="-mb-px flex space-x-4 lg:space-x-8">
                 <button
                   className={`py-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === "pending"
@@ -430,103 +275,103 @@ export default function BookingPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200">
-            <table className="min-w-full">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="w-8 py-4 px-6">
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300"
-                    />
-                  </th>
-                  <th className="py-4 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Booking ID
-                  </th>
-
-                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cleaning Business
-                  </th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Service
-                  </th>
-
-                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="py-8">
-                      <div className="flex justify-center items-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <span className="text-gray-500 ml-2">
-                          Loading bookings...
-                        </span>
-                      </div>
-                    </td>
+          <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+            <div className="overflow-x-auto lg:overflow-x-auto">
+              <table className="min-w-full lg:min-w-[1200px]">
+                {" "}
+                {/* Set a larger min-width for desktop */}
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="w-8 py-4 px-6">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300"
+                      />
+                    </th>
+                    <th className="py-4 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Booking ID
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Cleaning Business
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Service
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
                   </tr>
-                ) : (
-                  paginatedBookings.map((booking) => (
-                    <tr
-                      key={booking._id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handleBookingClick(booking)}
-                    >
-                      <td className="py-5 px-6">
-                        <input
-                          type="checkbox"
-                          className="rounded border-gray-300"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </td>
-                      <td className="py-5 px-6">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">
-                            {booking._id}
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            {booking.property}
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={5} className="py-8">
+                        <div className="flex justify-center items-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          <span className="text-gray-500 ml-2">
+                            Loading bookings...
                           </span>
                         </div>
                       </td>
-
-                      <td className="py-4 px-4 text-sm text-gray-900">
-                        {booking.cleaningBusiness || "-"}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-900">
-                        {booking.serviceType}
-                      </td>
-
-                      <td className="py-5 px-6">
-                        {activeTab === "pending" ? (
-                          <button
-                            className="text-[#0082ed] hover:underline text-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedBooking(booking);
-                              setIsRequestModalOpen(true);
-                            }}
-                          >
-                            Approve
-                          </button>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                              booking.status
-                            )}`}
-                          >
-                            {booking.status}
-                          </span>
-                        )}
-                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    paginatedBookings.map((booking) => (
+                      <tr
+                        key={booking._id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleBookingClick(booking)}
+                      >
+                        <td className="py-5 px-6">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </td>
+                        <td className="py-5 px-6">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900">
+                              {booking._id}
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              {booking.property}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-900">
+                          {booking.cleaningBusiness || "-"}
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-900">
+                          {booking.serviceType}
+                        </td>
+                        <td className="py-5 px-6">
+                          {activeTab === "pending" ? (
+                            <button
+                              className="text-[#0082ed] hover:underline text-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedBooking(booking);
+                                setIsRequestModalOpen(true);
+                              }}
+                            >
+                              Approve
+                            </button>
+                          ) : (
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                booking.status
+                              )}`}
+                            >
+                              {booking.status}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700">
@@ -604,4 +449,3 @@ export default function BookingPage() {
     </div>
   );
 }
-

@@ -291,10 +291,16 @@ export default function UserProfile() {
   // }, [activeTab]);
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex flex-col  min-h-screen bg-white">
       <Sidebar />
-      <div className="flex-1 ml-[240px]">
-        <div className="px-8 py-4">
+      {/* Modal Sidebar for small screens */}
+
+      {/* Sidebar for medium and larger screens */}
+      <div className="hidden lg:block fixed top-0 left-0 w-[240px] h-screen bg-[#101113] z-10">
+        <Sidebar />
+      </div>
+      <div className="flex-1 p-4 lg:p-8 mt-12 md:mt-0  md:ml-[240px]">
+        <div className="px-2 py-4">
           {/* Breadcrumb */}
           <div className="flex  justify-between ">
             <div className="flex items-center gap-2 mb-8 text-sm">
@@ -431,7 +437,7 @@ export default function UserProfile() {
             <LimpiadorModal
               selectedLimpiador={selectedLimpiador}
               setIsModalOpen={setIsModalOpen}
-            userName={userName}
+              userName={userName}
             />
           )}
           {activeTab === "Booking History" && (

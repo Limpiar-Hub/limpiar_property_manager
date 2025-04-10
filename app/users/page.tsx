@@ -3,13 +3,23 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
-import { Search, ChevronDown, Bell, Loader2 } from "lucide-react"
-import { UserDetailsModal } from "@/components/user-details-modal"
-import { toast } from "@/components/ui/use-toast"
-import { Button } from "@/components/ui/button"
-import { fetchPropertyManagers, fetchCleaningBusinesses, fetchCleaners, updateUser } from "@/services/api"
+import { Search, ChevronDown, Bell, Loader2, X, Plus } from "lucide-react";
+import { UserDetailsModal } from "@/components/user-details-modal";
+import { toast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  fetchPropertyManagers,
+  fetchCleaningBusinesses,
+  fetchCleaners,
+  updateUser,
+} from "@/services/api";
 import ProfilePage from "../profile/page";
 import AdminProfile from "@/components/adminProfile";
+import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
+import { Menu } from "lucide-react";
+import PropertyManagerTable from "@/components/userTables/propertyManager";
+import CleanerTable from "@/components/userTables/CleanerTable";
+import AdminTable from "@/components/userTables/AdminTable";
 
 interface User {
   userId: string;
@@ -42,6 +52,7 @@ export default function UsersPage() {
   const [profilePage, setProfilePage] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1); // Added state for currentPage
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     if (storedToken) {
@@ -184,38 +195,36 @@ export default function UsersPage() {
   const currentItems = filteredUsers?.slice(startIndex, endIndex) || [];
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex flex-col  min-h-screen bg-white">
       <Sidebar />
-      <div className="flex-1 ml-[240px]">
-        <div
-          className={`flex px-8 py-4 border-b border-gray-200 ${
-            selectedUser ? "justify-between" : "justify-end"
-          }`}
-        >
-          {/* Breadcrumb section (shown only if selectedUser exists) */}
-          {selectedUser && <div>{`User/${selectedUserName}`}</div>}
+      {/* Modal Sidebar for small screens */}
 
-          <div className="flex items-center gap-4">
-            <AdminProfile />
-          </div>
+      {/* Sidebar for medium and larger screens */}
+      <div className="hidden lg:block fixed top-0 left-0 w-[240px] h-screen bg-[#101113] z-10">
+        <Sidebar />
+      </div>
+      <div className="flex-1 p-4 lg:p-8  md:ml-[240px]">
+        <div className="flex   justify-end items-center mb-4 mt-12 md:mt-0">
+          <AdminProfile />
         </div>
-
-        <div className="p-8">
+        <div className="flex flex-col ">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-semibold">Users</h1>
-            <div className="relative flex items-center w-[380px]">
-              <Search className="absolute left-3 h-5 w-5 text-gray-400" />
-              <input
-                type="search"
-                placeholder="Search"
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed] focus:border-transparent"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <h1 className="text-2xl font-semibold"> Users</h1>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="search"
+                  placeholder="Search"
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed] focus:border-transparent"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6 ">
             <div className="border-b border-gray-200">
               <nav className="-mb-px flex space-x-8">
                 <button
@@ -252,11 +261,17 @@ export default function UsersPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
             {isLoading ? (
               <div className="flex justify-center items-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2">Loading users...</span>
+                <span className="ml-2">
+                  Loading
+                  {activeTab === "property-manager" && "Property Manager"}
+                  {activeTab === "cleaning-business" &&
+                    "Cleaning Business Admin"}
+                  {activeTab === "cleaner" && "Cleaners"}...
+                </span>
               </div>
             ) : error ? (
               <div className="text-center py-8 text-red-500">
@@ -267,80 +282,114 @@ export default function UsersPage() {
               </div>
             ) : (
               <>
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="py-3 px-4">
-                        <input
-                          type="checkbox"
-                          className="form-checkbox h-4 w-4 text-indigo-600"
-                        />
-                      </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Phone
-                      </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Created At
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white">
-                    {currentItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="text-center py-8">
-                          No users found
-                        </td>
+                {activeTab === "cleaning-business" && (
+                  <AdminTable
+                    currentItems={currentItems}
+                    isLoading={isLoading}
+                    error={error}
+                    handleUserClick={handleUserClick}
+                  />
+                )}
+                {activeTab === "cleaner" && (
+                  <CleanerTable
+                    currentItems={currentItems}
+                    isLoading={isLoading}
+                    error={error}
+                    handleUserClick={handleUserClick}
+                  />
+                )}
+                {activeTab === "property-manager" && (
+                  <PropertyManagerTable
+                    currentItems={currentItems}
+                    isLoading={isLoading}
+                    error={error}
+                    handleUserClick={handleUserClick}
+                  />
+                )}
+                {/* <div className="overflow-x-auto lg:overflow-x-auto">
+                  <table className="min-w-full lg:min-w-[1200px] table-auto border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="w-8 py-4 px-6">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300"
+                          />
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                          Name
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                          Email
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                          Phone
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                          Status
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                          Created At
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                          Updated At
+                        </th>
                       </tr>
-                    ) : (
-                      currentItems.map((user) => (
-                        <tr
-                          key={user._id || user.userId}
-                          className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleUserClick(user)}
-                        >
-                          <th className="py-3 px-4">
-                            <input
-                              type="checkbox"
-                              className="form-checkbox h-4 w-4 text-indigo-600"
-                            />
-                          </th>
-                          <td className="py-4 px-4 text-sm text-gray-900">
-                            {user.fullName}
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-500">
-                            {user.email}
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-500">
-                            {user.phoneNumber}
-                          </td>
-                          <td className="py-4 px-4 text-sm">
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                user.isVerified
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                              }`}
-                            >
-                              {user.isVerified ? "Verified" : "Pending"}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-500">
-                            {new Date(user.createdAt).toLocaleDateString()}
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {isLoading ? (
+                        <tr>
+                          <td colSpan={5} className="py-8">
+                            <div className="flex justify-center items-center">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                              <span className="text-gray-500 ml-2">
+                                Loading bookings...
+                              </span>
+                            </div>
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        currentItems.map((user) => (
+                          <tr
+                            key={user._id || user.userId}
+                            className="hover:bg-gray-50 cursor-pointer"
+                          >
+                            <td className="py-5 px-6">
+                              <input
+                                type="checkbox"
+                                className="rounded border-gray-300"
+                              />
+                            </td>
+                            <td className="py-4 px-4 text-sm text-gray-900 whitespace-nowrap">
+                              {user.fullName}
+                            </td>
+                            <td className="py-4 px-4 text-sm text-gray-500 whitespace-nowrap">
+                              {user.email}
+                            </td>
+                            <td className="py-4 px-4 text-sm text-gray-500 whitespace-nowrap">
+                              {user.phoneNumber}
+                            </td>
+                            <td className="py-4 px-4 text-sm whitespace-nowrap">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  user.isVerified
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-yellow-100 text-yellow-800"
+                                }`}
+                              >
+                                {user.isVerified ? "Verified" : "Pending"}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-sm text-gray-500 whitespace-nowrap">
+                              {new Date(user.createdAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div> */}
+
                 <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
                   <div className="flex items-center space-x-4">
                     <span className="text-sm text-gray-700">
@@ -394,17 +443,16 @@ export default function UsersPage() {
             )}
           </div>
         </div>
-
-        {/* {selectedUser && (
-        <UserDetailsModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          user={selectedUser}
-          onUpdate={handleUpdateUser}
-        />
-      )} */}
       </div>
     </div>
+    // {selectedUser && (
+    //   <UserDetailsModal
+    //     isOpen={isModalOpen}
+    //     onClose={() => setIsModalOpen(false)}
+    //     user={selectedUser}
+    //     onUpdate={handleUpdateUser}
+    //   />
+    // )}
   );
 }
 

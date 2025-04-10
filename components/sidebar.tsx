@@ -1,47 +1,61 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { Users, Briefcase, Building2, CreditCard, LineChart, Settings, HeadphonesIcon, LogOut } from "lucide-react"
-import Image from "next/image"
-import { cn } from "@/lib/utils"
-import { useState } from "react"
-import { toast } from "@/components/ui/use-toast"
-import { ROUTES } from "@/lib/constants"
-import { logout } from "@/services/auth-service"
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Users,
+  Briefcase,
+  Building2,
+  CreditCard,
+  LineChart,
+  Settings,
+  HeadphonesIcon,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { toast } from "@/components/ui/use-toast";
+import { ROUTES } from "@/lib/constants";
+import { logout } from "@/services/auth-service";
 
 export function Sidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleMenu = () => setIsOpen((prev) => !prev);
 
   const menuItems = [
     { href: ROUTES.USERS, icon: Users, label: "Users" },
-    { href: ROUTES.CLEANING_BUSINESSES, icon: Briefcase, label: "Cleaning Business" },
+    {
+      href: ROUTES.CLEANING_BUSINESSES,
+      icon: Briefcase,
+      label: "Cleaning Business",
+    },
     { href: ROUTES.PROPERTIES, icon: Building2, label: "Property" },
     { href: ROUTES.BOOKINGS, icon: CreditCard, label: "Booking" },
     { href: ROUTES.PAYMENTS, icon: CreditCard, label: "Payment" },
     { href: "/analytics", icon: LineChart, label: "Analytics" },
     { href: ROUTES.SETTINGS, icon: Settings, label: "Settings" },
-  ]
+  ];
 
-  const footerItems = [{ href: "/support", icon: HeadphonesIcon, label: "Help and Support" }]
+  const footerItems = [
+    { href: "/support", icon: HeadphonesIcon, label: "Help and Support" },
+  ];
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      // Logout user
-      logout();
-
-      // Redirect to login page
-
+      await logout(); // Make sure the logout function is awaited
       router.push(ROUTES.LOGIN);
-
       toast({
         title: "Logged out successfully",
         description: "You have been logged out of your account.",
       });
-      console.log("toast message");
     } catch (error) {
       console.error("Logout error:", error);
       toast({
@@ -57,13 +71,8 @@ export function Sidebar() {
     }
   };
 
-  return (
-    <div className="fixed left-0 top-0 flex h-screen w-[240px] flex-col bg-[#101113]">
-      <div className="p-6">
-        <Image src="/logo.jpg" alt="Limpiar Logo" width={120} height={40} className="h-8 w-auto" />
-      </div>
-
-      {/* Static Dashboard Title */}
+  const renderLinks = () => (
+    <>
       <div className="px-6 pb-4">
         <h1 className="text-lg font-semibold text-white">Dashboard</h1>
       </div>
@@ -75,7 +84,9 @@ export function Sidebar() {
             href={item.href}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-              pathname === item.href ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white",
+              pathname === item.href
+                ? "bg-white/10 text-white"
+                : "text-white/70 hover:bg-white/5 hover:text-white"
             )}
           >
             <item.icon className="h-5 w-5" />
@@ -104,7 +115,51 @@ export function Sidebar() {
           <span>{isLoggingOut ? "Logging out..." : "Logout"}</span>
         </button>
       </div>
-    </div>
-  )
-}
+    </>
+  );
 
+  return (
+    <>
+      {/* Mobile Topbar */}
+      <div className="md:hidden fixed top-0 left-0 z-50 flex h-14 w-full items-center justify-between bg-[#101113] px-2 shadow">
+        <div className="bg-white w-[100px] h-[40px] rounded-3xl flex items-center justify-center">
+          <Image
+            src="/logo.jpg"
+            alt="Limpiar Logo"
+            width={80}
+            height={30}
+            className="h-8 w-auto rounded-3xl"
+          />
+        </div>
+        <button onClick={toggleMenu}>
+          {isOpen ? (
+            <X className="text-white h-6 w-6" />
+          ) : (
+            <Menu className="text-white h-6 w-6" />
+          )}
+        </button>
+      </div>
+
+      {/* Sidebar for Desktop */}
+      <div className="hidden md:fixed md:left-0 md:top-0 md:flex md:h-screen md:w-[240px] md:flex-col md:bg-[#101113]">
+        <div className="p-6">
+          <Image
+            src="/logo.jpg"
+            alt="Limpiar Logo"
+            width={120}
+            height={40}
+            className="h-8 w-auto"
+          />
+        </div>
+        {renderLinks()}
+      </div>
+
+      {/* Sidebar for Mobile (Slide Out) */}
+      {isOpen && (
+        <div className="fixed top-14 left-0 z-40 h-[calc(100vh-56px)] w-[240px] bg-[#101113] p-4 md:hidden overflow-y-auto">
+          {renderLinks()}
+        </div>
+      )}
+    </>
+  );
+}

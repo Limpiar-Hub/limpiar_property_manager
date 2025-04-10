@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Sidebar } from "@/components/sidebar"
-import { Search, Plus, Filter } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Search, Plus, Filter, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import { AddPropertyModal } from "@/components/property/add-property-modal";
 import { toast } from "@/components/ui/use-toast";
@@ -273,27 +273,33 @@ export default function PropertyPage() {
     currentPage * rowsPerPage
   );
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex flex-col  min-h-screen bg-white">
       <Sidebar />
-      <div className="flex-1 ml-[240px]">
+      {/* Modal Sidebar for small screens */}
+
+      {/* Sidebar for medium and larger screens */}
+      <div className="hidden md:block fixed top-0 left-0 w-[240px] h-screen bg-[#101113] z-10">
+        <Sidebar />
+      </div>
+      <div className="flex-1 p-4 lg:p-8 lg:ml-[240px]">
         <div className="flex justify-end items-center gap-4 p-4">
           <AdminProfile />
         </div>
-        <div className="p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-semibold">Properties</h1>
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="search"
-                  placeholder="Search properties..."
-                  className="pl-10 pr-4 py-2 w-[240px] rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed] focus:border-transparent"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Button variant="outline" className="gap-2">
+
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-semibold">Properties</h1>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="search"
+                placeholder="Search properties..."
+                className="pl-10 pr-4 py-2 w-[240px] rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed] focus:border-transparent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            {/* <Button variant="outline" className="gap-2">
                 <Filter className="h-4 w-4" />
                 Filter
               </Button>
@@ -303,230 +309,222 @@ export default function PropertyPage() {
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Property
-              </Button>
-            </div>
+              </Button> */}
           </div>
 
-          <div className="mb-6">
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
-                <button
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "pending"
-                      ? "border-[#0082ed] text-[#0082ed]"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                  onClick={() => setActiveTab("pending")}
-                >
-                  Pending
-                </button>
-                <button
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "verified"
-                      ? "border-[#0082ed] text-[#0082ed]"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                  onClick={() => setActiveTab("verified")}
-                >
-                  Verified
-                </button>
-              </nav>
-            </div>
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "pending"
+                    ? "border-[#0082ed] text-[#0082ed]"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("pending")}
+              >
+                Pending
+              </button>
+              <button
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "verified"
+                    ? "border-[#0082ed] text-[#0082ed]"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("verified")}
+              >
+                Verified
+              </button>
+            </nav>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#0082ed]"></div>
-                <p className="mt-2 text-gray-500">Loading properties...</p>
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-2 text-gray-500">Loading Properties...</p>
               </div>
             ) : error ? (
               <div className="text-center py-8 text-red-500">
-                <p className="mb-2">{error}</p>
-                <Button onClick={fetchPropertiesList} className="mt-2">
+                <p className="mb-4">{error}</p>
+                <Button onClick={fetchPropertiesList} className="ml-2">
                   Retry
                 </Button>
               </div>
-            ) : filteredProperties.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p className="mb-2">No {activeTab} properties found</p>
-                {activeTab === "pending" && (
-                  <Button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="mt-2 bg-[#0082ed] hover:bg-[#0082ed]/90"
-                  >
-                    Add New Property
-                  </Button>
-                )}
-              </div>
             ) : (
-              <table className="min-w-full">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="py-3 px-4">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-4 w-4 text-indigo-600"
-                      />
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Property Type
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Property Name
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Location
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Images
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Property Manger
-                    </th>
-                    <th className="py-3 px-4"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedProperty.map((property) => (
-                    <tr
-                      key={property._id}
-                      className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handlePropertyClick(property)}
-                    >
-                      <td className="py-3 px-4">
-                        <input
-                          type="checkbox"
-                          className="form-checkbox h-4 w-4 text-indigo-600"
-                        />
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-900">
-                        <div>
-                          <div className="font-medium">{property.type}</div>
-                          <div className="text-gray-500">
-                            {property.subType}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-900">
-                        {property.name}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-500">
-                        {property.address}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-500">
-                        {property.images.length > 0 ? (
-                          <div className="flex items-center relative">
-                            <div className="flex -space-x-4">
-                              {property.images.slice(0, 2).map((img, index) => (
-                                <img
-                                  key={index}
-                                  src={img}
-                                  alt={`Property ${index + 1}`}
-                                  className="w-16 h-16 object-cover rounded-md border-2 border-white"
-                                />
-                              ))}
+              // ) :  : (
+              <>
+                <div className="overflow-x-auto lg:overflow-x-auto">
+                  <table className="min-w-full lg:min-w-[1200px] table-auto border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="py-3 px-4">
+                          <input
+                            type="checkbox"
+                            className="form-checkbox h-4 w-4 text-indigo-600"
+                          />
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Property Type
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Property Name
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Location
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Images
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Property Manger
+                        </th>
+                        <th className="py-3 px-4"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedProperty.map((property) => (
+                        <tr
+                          key={property._id}
+                          className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handlePropertyClick(property)}
+                        >
+                          <td className="py-3 px-4">
+                            <input
+                              type="checkbox"
+                              className="form-checkbox h-4 w-4 text-indigo-600"
+                            />
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-900">
+                            <div>
+                              <div className="font-medium">{property.type}</div>
+                              <div className="text-gray-500">
+                                {property.subType}
+                              </div>
                             </div>
-                            <span className="ml-8 text-black">
-                              +{property.images.length}
-                            </span>
-                          </div>
-                        ) : (
-                          <span>No Image</span>
-                        )}
-                      </td>
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-900">
+                            {property.name}
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-500">
+                            {property.address}
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-500">
+                            {property.images.length > 0 ? (
+                              <div className="flex items-center relative">
+                                <div className="flex -space-x-4">
+                                  {property.images
+                                    .slice(0, 2)
+                                    .map((img, index) => (
+                                      <img
+                                        key={index}
+                                        src={img}
+                                        alt={`Property ${index + 1}`}
+                                        className="w-16 h-16 object-cover rounded-md border-2 border-white"
+                                      />
+                                    ))}
+                                </div>
+                                <span className="ml-4 text-black">
+                                  +{property.images.length}
+                                </span>
+                              </div>
+                            ) : (
+                              <span>No Image</span>
+                            )}
+                          </td>
 
-                      <td className="py-4 px-4 text-sm text-gray-500">
-                        {new Date(property.createdAt).toLocaleDateString()}
-                      </td>
-                      <td
-                        className="py-4 px-4 "
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {property.status === "pending" && (
-                          <button
-                            className="text-sm  hover:underline border rounded-md px-4 py-1"
-                            onClick={() =>
-                              handleVerifyProperty(
-                                property._id,
-                                property.propertyManagerId
-                              )
-                            }
+                          <td className="py-4 px-4 text-sm text-gray-500">
+                            {new Date(property.createdAt).toLocaleDateString()}
+                          </td>
+                          <td
+                            className="py-4 px-4 "
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            Approve
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            {property.status === "pending" && (
+                              <button
+                                className="text-sm  hover:underline border rounded-md px-4 py-1"
+                                onClick={() =>
+                                  handleVerifyProperty(
+                                    property._id,
+                                    property.propertyManagerId
+                                  )
+                                }
+                              >
+                                Approve
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm text-gray-700">
+                      Show rows:{" "}
+                      <select
+                        className="border rounded-md px-2 py-1"
+                        value={rowsPerPage}
+                        onChange={(e) => {
+                          setRowsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        {[5, 10, 20, 30].map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                    <span className="text-sm text-gray-700">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      className="px-4 py-2 border rounded-md text-sm disabled:opacity-50"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      className="px-4 py-2 border rounded-md text-sm disabled:opacity-50"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-700">
-                  Show rows:{" "}
-                  <select
-                    className="border rounded-md px-2 py-1"
-                    value={rowsPerPage}
-                    onChange={(e) => {
-                      setRowsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                  >
-                    {[5, 10, 20, 30].map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </span>
-                <span className="text-sm text-gray-700">
-                  Page {currentPage} of {totalPages}
-                </span>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  className="px-4 py-2 border rounded-md text-sm disabled:opacity-50"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(1, prev - 1))
-                  }
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <button
-                  className="px-4 py-2 border rounded-md text-sm disabled:opacity-50"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
           </div>
+
+          {selectedProperty && (
+            <PropertyDetailsModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              property={selectedProperty}
+              onVerify={handleVerifyProperty}
+              onDelete={handleDeleteProperty}
+              onUpdate={handleUpdateProperty}
+            />
+          )}
+
+          <AddPropertyModal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            onPropertyAdded={fetchPropertiesList}
+          />
         </div>
-      </div>
-
-      {selectedProperty && (
-        <PropertyDetailsModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          property={selectedProperty}
-          onVerify={handleVerifyProperty}
-          onDelete={handleDeleteProperty}
-          onUpdate={handleUpdateProperty}
-        />
-      )}
-
-      <AddPropertyModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onPropertyAdded={fetchPropertiesList}
-      />
     </div>
-  );
-}
+    </div>
+    )};
 

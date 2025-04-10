@@ -32,7 +32,7 @@ const Property = ({
   };
   return (
     <>
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         {isLoading ? (
           <div className="text-center py-8">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#0082ed]"></div>
@@ -48,7 +48,7 @@ const Property = ({
             <p className="mb-2">No properties found</p>
           </div>
         ) : (
-          <table className="min-w-full">
+          <table className="min-w-full lg:min-w-[1200px] table-auto border-collapse">
             <thead>
               <tr className="bg-gray-50">
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

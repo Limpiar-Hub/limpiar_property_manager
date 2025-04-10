@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Menu, Search, X } from "lucide-react";
 import { CleaningBusinessRequestModal } from "@/components/cleaning-business/cleaning-business-request-modal";
 import { CleaningBusinessDetailsModal } from "@/components/cleaning-business/cleaning-business-details-modal";
 import { toast } from "@/components/ui/use-toast";
+import AdminProfile from "@/components/adminProfile";
+import { Button } from "@/components/ui/button";
 
 interface CleaningBusiness {
   _id: Key | null | undefined;
@@ -34,6 +36,7 @@ export default function CleaningBusinessPage() {
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   //const [selectedBusiness,setSelectedBusiness]=useState([]);
   const fetchCleaningBusiness = useCallback(async () => {
     setIsLoading(true);
@@ -78,10 +81,17 @@ export default function CleaningBusinessPage() {
     }
   }, []);
 
+
   useEffect(() => {
     fetchCleaningBusiness();
   }, [fetchCleaningBusiness]);
-
+  const pendingCleaningBusinessLength = cleaningBusinesses.filter(
+    (b) => !b.identityVerified
+  ).length;
+  const activeCleaningBusinessLength = cleaningBusinesses.filter(
+    (b) => b.identityVerified
+  ).length;
+// Removed duplicate declaration of pendingCleaningBusinessLength
   const filteredBusinesses = cleaningBusinesses
     .filter((business) => {
       const searchLower = searchQuery.toLowerCase();
@@ -103,12 +113,7 @@ export default function CleaningBusinessPage() {
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
-  const pendingCleaningBusinessLength = filteredBusinesses.filter(
-    (b) => !b.identityVerified
-  ).length;
-  const activeCleaningBusinessLength = filteredBusinesses.filter(
-    (b) => b.identityVerified
-  ).length;
+  
   const handleBusinessClick = (business: CleaningBusiness) => {
     setSelectedBusiness(business);
     console.log(business);
@@ -181,6 +186,8 @@ export default function CleaningBusinessPage() {
     setIsRequestModalOpen(false);
   };
 
+  // Removed duplicate setSidebarOpen function definition
+
   // const handleApprove = async (id: string) => {
   //   console.log("approved");
   // };
@@ -188,34 +195,32 @@ export default function CleaningBusinessPage() {
   //   console.log("declined");
   // };
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white">
       <Sidebar />
+      {/* Modal Sidebar for small screens */}
 
-      <div className="flex-1 ml-[240px] p-8">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="text-gray-500">
-              Loading cleaning businesses...
-            </span>
-          </div>
-        ) : error ? (
-          <div className="text-red-500 p-8">Error: {error}</div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-semibold">Cleaning Businesses</h1>
+      {/* Sidebar for medium and larger screens */}
+      <div className="hidden md:block fixed top-0 left-0 w-[240px] h-screen bg-[#101113] z-10">
+        <Sidebar />
+      </div>
+
+      <div className="flex-1 p-4 lg:p-8  lg:ml-[240px]">
+        <div className="flex   justify-end items-center mb-4">
+          <AdminProfile />
+        </div>
+
+        
+        <div className="flex flex-col">
+            <h1 className=" flex text-2xl font-semibold"> Cleaning Business</h1>
+            <div className="flex items-center gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="search"
                   placeholder="Search"
-                  className="pl-10 pr-4 py-2 w-[240px] rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed]"
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed] focus:border-transparent"
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
@@ -246,7 +251,22 @@ export default function CleaningBusinessPage() {
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <table className="min-w-full">
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-2 text-gray-500">Loading Cleaning Business...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-500">
+                <p className="mb-4">{error}</p>
+                <Button onClick={fetchCleaningBusiness} className="ml-2">
+                  Retry
+                </Button>
+              </div>
+            ) : (
+              <>
+              <div className="overflow-x-auto lg:overflow-x-auto">
+              <table className="min-w-full lg:min-w-[1200px] table-auto border-collapse">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="py-4 px-6 text-left text-xs font-medium text-gray-500 uppercase">
@@ -279,7 +299,7 @@ export default function CleaningBusinessPage() {
                       onClick={() => handleBusinessClick(business)}
                     >
                       <td className="py-4 px-6 text-sm text-gray-900">
-                        {business.name}
+                        {business.name || "Cleanig Business "}
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-900">
                         {business.fullName}
@@ -319,6 +339,7 @@ export default function CleaningBusinessPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
 
               <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
                 <div className="flex items-center space-x-4">
@@ -364,9 +385,15 @@ export default function CleaningBusinessPage() {
                   </button>
                 </div>
               </div>
-            </div>
-          </>
-        )}
+                    
+                  </>
+                )
+              }
+              </div>
+          
+              
+              
+         
 
         {/* Modals */}
         {selectedBusiness && (
@@ -387,5 +414,5 @@ export default function CleaningBusinessPage() {
         )}
       </div>
     </div>
-  );
-}
+    </div>
+    )};
