@@ -1,17 +1,11 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Sidebar } from "@/components/sidebar"
-import { Loader2, Search } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useState, useEffect } from "react";
+import { Sidebar } from "@/components/sidebar";
+import { Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import AdminProfile from "@/components/adminProfile";
+import { RefundModal } from "@/components/payment/RefundModal";
 
 interface Transaction {
   method: any;
@@ -21,70 +15,85 @@ interface Transaction {
     email: string;
   };
   amount: number;
+  reason: string;
   currency: string;
-  status: "pending" | "succeeded" | "failed";
+  status: "pending" | "succeeded" | "failed" | "approved" | "rejected";
   paymentIntentId: string;
   reference: string;
   createdAt: string;
   updatedAt: string;
 }
 
+interface Refund {
+  _id: string;
+  amount: number;
+  reason: string;
+  status: string;
+  requestDate: string;
+  userId?: {
+    fullName: string;
+    email: string;
+  };
+}
+
 export default function PaymentPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<
+    "transactions" | "refund-requests" | "pending-requests" | "approved-requests" | "all-refunds"
+  >("transactions");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [refunds, setRefunds] = useState<Refund[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState({
+    transactions: 1,
+    refundRequests: 1,
+    pendingRequests: 1,
+    approvedRequests: 1,
+    allRefunds: 1,
+  });
   const [rowsPerPage, setRowsPerPage] = useState<number>(4);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [wallets, setWallets] = useState<any[]>([]); // State to hold all wallet data
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+  const [refundRequest, setRefundRequest] = useState<Refund | null>(null);
 
   useEffect(() => {
-    const fetchWallets = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        console.error("No authentication token found");
-        return;
-      }
-
-      try {
-        const headers = {
-          Authorization: `Bearer ${token}`,
-        };
-
-        const walletRes = await fetch(
-          "https://limpiar-backend.onrender.com/api/wallets/",
-          { headers }
-        );
-        if (!walletRes.ok) {
-          throw new Error(`Failed to fetch wallets: ${walletRes.status}`);
-        }
-
-        const walletData = await walletRes.json();
-        console.log("Wallet Data:", walletData); // Log wallet data
-        setWallets(walletData.wallets); // Store all wallets
-
-        // Find the admin wallet and set its balance
-        const adminWallet = walletData.wallets.find(
-          (wallet: any) => wallet.type === "admin"
-        );
-        if (adminWallet) {
-          setWalletBalance(adminWallet.balance); // Set the admin wallet balance
-        } else {
-          console.error("No admin wallet found in the fetched data");
-        }
-      } catch (error) {
-        console.error("Error fetching wallets:", error);
-      }
-    };
-
     fetchWallets();
+    fetchTransactions();
+    fetchRefunds();
   }, []);
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
+  const fetchWallets = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("No authentication token found");
+      return;
+    }
+
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const walletRes = await fetch(
+        "https://limpiar-backend.onrender.com/api/wallets/",
+        { headers }
+      );
+      if (!walletRes.ok) {
+        throw new Error(`Failed to fetch wallets: ${walletRes.status}`);
+      }
+
+      const walletData = await walletRes.json();
+      setWallets(walletData.wallets);
+
+      const adminWallet = walletData.wallets.find(
+        (wallet: any) => wallet.type === "admin"
+      );
+      if (adminWallet) {
+        setWalletBalance(adminWallet.balance);
+      }
+    } catch (error) {
+      console.error("Error fetching wallets:", error);
+    }
+  };
 
   const fetchTransactions = async () => {
     setIsLoading(true);
@@ -95,9 +104,7 @@ export default function PaymentPage() {
         throw new Error("No authentication token found");
       }
 
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      };
+      const headers = { Authorization: `Bearer ${token}` };
 
       // Fetch transactions from Stripe
       const stripeRes = await fetch(
@@ -112,6 +119,8 @@ export default function PaymentPage() {
       const stripeTransactions = stripeData.data.map((txn: any) => ({
         ...txn,
         method: "stripe",
+        description:
+          txn.description || `Payment of $${(txn.amount / 100).toFixed(2)} via Stripe`,
       }));
 
       // Fetch wallet data
@@ -124,79 +133,135 @@ export default function PaymentPage() {
       }
 
       const walletData = await walletRes.json();
-      console.log("Wallet Data:", walletData); // Log wallet data
 
       // Fetch user details for each wallet transaction
       const walletTransactions = await Promise.all(
         walletData.wallets.flatMap(async (wallet: any) => {
-          // Only process wallets that have transactions
           if (wallet.transactions.length === 0) return [];
 
-          const userId = wallet.userId; // Get the user ID from the wallet
-          console.log("Fetching user data for ID:", userId); // Log userId
-
-          // Fetch user details based on userId with token
-          const userRes = await fetch(
-            `https://limpiar-backend.onrender.com/api/users/${userId}`,
-            { headers }
-          );
-
-          // Default user data if not found
+          const userId = wallet.userId;
           let userData = { fullName: "Unknown", email: "N/A" };
-          if (userRes.ok) {
-            userData = await userRes.json();
-          } else {
-            console.error(
-              `Failed to fetch user data for ID: ${userId} - Status: ${userRes.status}`
+          if (userId) {
+            const userRes = await fetch(
+              `https://limpiar-backend.onrender.com/api/users/${userId}`,
+              { headers }
             );
+            if (userRes.ok) {
+              userData = await userRes.json();
+            }
           }
 
-          console.log("User Data:", userData); // Log user data for debugging
+          return wallet.transactions.map((txn: any) => {
+            const successMessage = txn.message || txn.description;
+            const isCompleted = successMessage === "Task done and booking completed. Payment processed.";
 
-          // Map wallet transactions to include user details
-          return wallet.transactions.map((txn: any) => ({
-            _id: txn._id,
-            userId: {
-              fullName: userData.fullName || "N/A",
-              email: userData.email || "N/A",
-            },
-            amount: txn.amount,
-            currency: "NGN", // Assuming currency
-            status: txn.status,
-            paymentIntentId: txn.transactionId || "wallet_txn",
-            reference: txn.transactionId, // You can replace this based on your need
-            createdAt: txn.timestamp,
-            updatedAt: wallet.updatedAt, // Use wallet updated date for consistency
-            method: "wallet",
-          }));
+            return {
+              _id: txn._id,
+              userId: {
+                fullName: userData.fullName || "N/A",
+                email: userData.email || "N/A",
+              },
+              amount: txn.amount,
+              currency: "USD",
+              status: txn.isRefund
+                ? txn.status === "approved"
+                  ? "approved"
+                  : "rejected"
+                : isCompleted
+                ? "completed"
+                : txn.status || "pending",
+              paymentIntentId: txn.transactionId || "wallet_txn",
+              reference: txn.transactionId,
+              createdAt: txn.timestamp,
+              updatedAt: wallet.updatedAt,
+              method: "wallet",
+              description: successMessage || `Wallet payment of $${txn.amount?.toFixed(2)}`,
+            };
+          });
         })
       );
 
-      // Filter out any undefined wallet transactions
       const filteredWalletTransactions = walletTransactions.filter(Boolean);
+      const allTransactions = [...stripeTransactions, ...filteredWalletTransactions].flat();
 
-      // Combine both transactions
-      const allTransactions = [
-        ...stripeTransactions,
-        ...filteredWalletTransactions,
-      ].flat();
-
-      // Optionally: sort by date if available
       allTransactions.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
-      console.log("All Transactions:", allTransactions); // Log all transactions for debugging
       setTransactions(allTransactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
-      setError(
-        error instanceof Error ? error.message : "An unknown error occurred"
-      );
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
       toast({
         title: "Error",
         description: `Failed to fetch transactions: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchRefunds = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const headers = { Authorization: `Bearer ${token}` };
+      const refundsRes = await fetch(
+        "https://limpiar-backend.onrender.com/api/wallets/refunds",
+        { headers }
+      );
+      if (!refundsRes.ok) {
+        throw new Error(`Failed to fetch refunds: ${refundsRes.status}`);
+      }
+
+      const refundsData = await refundsRes.json();
+      if (refundsData.success) {
+        const flattenedRefunds = await Promise.all(
+          [
+            ...refundsData.refunds.pending,
+            ...refundsData.refunds.approved,
+            ...refundsData.refunds.rejected,
+          ].map(async (refund: any) => {
+            let userData = { fullName: "Unknown", email: "N/A" };
+            if (refund.userId) {
+              const userRes = await fetch(
+                `https://limpiar-backend.onrender.com/api/users/${refund.userId}`,
+                { headers }
+              );
+              if (userRes.ok) {
+                userData = await userRes.json();
+              }
+            }
+            return {
+              _id: refund._id,
+              amount: refund.amount,
+              reason: refund.reason,
+              status: refund.status,
+              requestDate: refund.createdAt,
+              userId: {
+                fullName: userData.fullName || "N/A",
+                email: userData.email || "N/A",
+              },
+            };
+          })
+        );
+        setRefunds(flattenedRefunds);
+      } else {
+        throw new Error("Failed to fetch refunds data");
+      }
+    } catch (error) {
+      console.error("Error fetching refunds:", error);
+      toast({
+        title: "Error",
+        description: `Failed to fetch refunds: ${
           error instanceof Error ? error.message : "Unknown error"
         }`,
         variant: "destructive",
@@ -214,238 +279,493 @@ export default function PaymentPage() {
         return "bg-green-100 text-green-800";
       case "failed":
         return "bg-red-100 text-red-800";
+      case "approved":
+        return "bg-blue-100 text-blue-800";
+      case "rejected":
+        return "bg-red-200 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  const filteredTransactions = transactions.filter(
-    (transaction) =>
-      (statusFilter === "all" || transaction.status === statusFilter) &&
-      (transaction.userId?.fullName
-        ?.toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-        transaction.method?.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const handleOpenRefundModal = (refund: Refund) => {
+    setRefundRequest(refund);
+    setIsRefundModalOpen(true);
+  };
 
-  const totalPages = Math.ceil(filteredTransactions.length / rowsPerPage);
-  const paginatedTransaction = filteredTransactions.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  const handleApproveRefund = async (refundId: string, userId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("No authentication token found");
 
-  const handleRefund = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
       const response = await fetch(
-        "https://limpiar-backend.onrender.com/api/payments/refund/${id}",
+        `https://limpiar-backend.onrender.com/api/wallets/process-refund`,
         {
-          method: "POST",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ amount: 1000 }), // Example amount for refund
+          body: JSON.stringify({
+            refundId,
+            userId,
+            action: "approve",
+          }),
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Failed to approve refund: ${response.status}`);
 
       const data = await response.json();
       toast({
-        title: "Success",
-        description: `Refund request sent successfully: ${data.message}`,
+        title: "Refund Approved",
+        description: data.message || "The refund has been processed successfully.",
         variant: "default",
       });
-    } catch (error) {
-      console.error("Error requesting refund:", error);
+      fetchRefunds();
+      setIsRefundModalOpen(false);
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: `Failed to request refund: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+        title: "Error Approving Refund",
+        description: error.message,
         variant: "destructive",
       });
     }
   };
 
-  // function setCurrentPage(arg0: (prev: any) => number): void {
-  //   throw new Error("Function not implemented.");
-  // }
+  const handleDenyRefund = async (refundId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("No authentication token found");
 
-  return (
-    <div className=" bg-white flex flex-col w-full min-h-screen">
-      <Sidebar />
-      {/* Modal Sidebar for small screens */}
+    try {
+      const response = await fetch(
+        `https://limpiar-backend.onrender.com/api/wallets/process-refund`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ refundId, action: "deny" }),
+        }
+      );
 
-      {/* Sidebar for medium and larger screens */}
-      <div className="hidden lg:block fixed top-0 left-0 w-[240px] h-screen bg-[#101113] z-10">
-        <Sidebar />
+      if (!response.ok) throw new Error(`Failed to deny refund: ${response.status}`);
+
+      const data = await response.json();
+      toast({
+        title: "Refund Denied",
+        description: data.message,
+        variant: "destructive",
+      });
+      fetchRefunds();
+      setIsRefundModalOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error Denying Refund",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Filter data for each table
+  const nonRefundTransactions = transactions.filter((txn) => txn.method !== "refund");
+  const refundRequests = refunds.filter((refund) => refund.status === "pending");
+  const pendingRequests = refunds.filter((refund) => refund.status === "pending");
+  const approvedRequests = refunds.filter((refund) => refund.status === "approved");
+  const allRefunds = refunds;
+
+  // Pagination for each table
+  const paginatedData = {
+    transactions: nonRefundTransactions.slice(
+      (currentPage.transactions - 1) * rowsPerPage,
+      currentPage.transactions * rowsPerPage
+    ),
+    refundRequests: refundRequests.slice(
+      (currentPage.refundRequests - 1) * rowsPerPage,
+      currentPage.refundRequests * rowsPerPage
+    ),
+    pendingRequests: pendingRequests.slice(
+      (currentPage.pendingRequests - 1) * rowsPerPage,
+      currentPage.pendingRequests * rowsPerPage
+    ),
+    approvedRequests: approvedRequests.slice(
+      (currentPage.approvedRequests - 1) * rowsPerPage,
+      currentPage.approvedRequests * rowsPerPage
+    ),
+    allRefunds: allRefunds.slice(
+      (currentPage.allRefunds - 1) * rowsPerPage,
+      currentPage.allRefunds * rowsPerPage
+    ),
+  };
+
+  const totalPages = {
+    transactions: Math.ceil(nonRefundTransactions.length / rowsPerPage),
+    refundRequests: Math.ceil(refundRequests.length / rowsPerPage),
+    pendingRequests: Math.ceil(pendingRequests.length / rowsPerPage),
+    approvedRequests: Math.ceil(approvedRequests.length / rowsPerPage),
+    allRefunds: Math.ceil(allRefunds.length / rowsPerPage),
+  };
+
+  // Render table/card based on active tab and screen size
+  const renderTable = (data: any[], type: string) => (
+    <>
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="min-w-full border-collapse">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="py-3 px-4">
+                <input type="checkbox" className="form-checkbox h-4 w-4 text-indigo-600" />
+              </th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              {type === "transactions" ? (
+                <>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Transaction Description
+                  </th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Method
+                  </th>
+                </>
+              ) : (
+                <>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Reason
+                  </th>
+                </>
+              )}
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {data.map((item: any) => (
+              <tr key={item._id} className="hover:bg-gray-50">
+                <td className="py-3 px-4">
+                  <input
+                    type="checkbox"
+                    className="form-checkbox h-4 w-4 text-indigo-600"
+                  />
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-900">
+                  {new Date(
+                    type === "transactions" ? item.createdAt : item.requestDate
+                  ).toLocaleDateString()}
+                </td>
+                {type === "transactions" ? (
+                  <>
+                    <td className="py-4 px-4 text-sm text-gray-900">
+                      <div className="text-gray-500">{item.description || "N/A"}</div>
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-500">
+                      ${item.amount || 0}
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-500">
+                      {item.method} Transaction
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="py-4 px-4 text-sm text-gray-900">
+                      {item.userId?.fullName || "N/A"}
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-500">
+                      ${item.amount || 0}
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-500">
+                      {item.reason || "N/A"}
+                    </td>
+                  </>
+                )}
+                <td className="py-4 px-4">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                      item.status
+                    )}`}
+                  >
+                    {item.status}
+                  </span>
+                </td>
+                <td className="py-4 px-4">
+                  {type !== "transactions" && (
+                    <button
+                      className="text-sm text-red-500 hover:underline"
+                      onClick={() => handleOpenRefundModal(item)}
+                    >
+                      Refund Details
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <div className="flex-1 p-4 lg:p-8   md:ml-[240px]">
-        <div className="flex justify-end items-center gap-4 p-4">
-          <AdminProfile />
-        </div>
-        <div className="flex flex-col  ">
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold mb-2">Payment</h1>
-          </div>
-          <div className="mb-8 flex flex-col items-center justify-center">
-            <div className="bg-black text-white p-12 rounded-xl text-center w-[300px] shadow-md">
-              <p className="text-sm text-gray-400">Wallet Balance</p>
-              <p className="text-3xl font-bold">
-                {walletBalance !== null
-                  ? walletBalance.toLocaleString()
-                  : "Loading..."}
-              </p>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden divide-y divide-gray-200">
+        {data.map((item: any) => (
+          <div
+            key={item._id}
+            className="p-4 hover:bg-gray-50"
+            onClick={type !== "transactions" ? () => handleOpenRefundModal(item) : undefined}
+          >
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium text-gray-900">
+                {type === "transactions" ? item.description || "N/A" : item.userId?.fullName || "N/A"}
+              </h3>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                  item.status
+                )}`}
+              >
+                {item.status}
+              </span>
             </div>
-
-            <button
-              className="mt-4 px-6 py-2 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 text-sm font-medium"
-              onClick={() => handleRefund()}
-            >
-              Request Refund
-            </button>
-          </div>
-
-          <div className=" rounded-lg border border-gray-200 h-[500px] overflow-hidden ">
-            {isLoading ? (
-              <div className="flex justify-center items-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-2 text-gray-500">Loading Payments...</p>
-              </div>
-            ) : error ? (
-              <div className="text-center py-4 text-red-500">{error}</div>
+            <p className="text-sm text-gray-600">
+              Date: {new Date(
+                type === "transactions" ? item.createdAt : item.requestDate
+              ).toLocaleDateString()}
+            </p>
+            <p className="text-sm text-gray-600">
+              Amount: ${item.amount || 0}
+            </p>
+            {type === "transactions" ? (
+              <p className="text-sm text-gray-600">
+                Method: {item.method} Transaction
+              </p>
             ) : (
               <>
-                <div className="overflow-x-auto lg:overflow-x-auto">
-                  <table className="min-w-full  lg:min-w-[1200px] table-auto border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="py-3 px-4">
-                          <input
-                            type="checkbox"
-                            className="form-checkbox h-4 w-4 text-indigo-600"
-                          />
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Transaction Description
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Amount
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Method
-                        </th>
-
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedTransaction.map((transaction) => (
-                        <tr
-                          key={transaction._id}
-                          className="border-t border-gray-200"
-                        >
-                          <td className="py-3 px-4">
-                            <input
-                              type="checkbox"
-                              className="form-checkbox h-4 w-4 text-indigo-600"
-                            />
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-900">
-                            {new Date(
-                              transaction.createdAt
-                            ).toLocaleDateString()}
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-900">
-                            <div className="text-gray-500">
-                              {transaction.description || "N/A"}
-                            </div>
-                          </td>
-
-                          <td className="py-4 px-4 text-sm text-gray-500">
-                            ${transaction.amount || 0}
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-500">
-                            {transaction.method} Transaction
-                          </td>
-
-                          <td className="py-4 px-4">
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                transaction.status
-                              )}`}
-                            >
-                              {transaction.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-700">
-                      Show rows:{" "}
-                      <select
-                        className="border rounded-md px-2 py-1"
-                        value={rowsPerPage}
-                        onChange={(e) => {
-                          setRowsPerPage(Number(e.target.value));
-                          setCurrentPage(1);
-                        }}
-                      >
-                        {[4, 10, 20, 30].map((size) => (
-                          <option key={size} value={size}>
-                            {size}
-                          </option>
-                        ))}
-                      </select>
-                    </span>
-                    <span className="text-sm text-gray-700">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      className="px-4 py-2 border rounded-md text-sm disabled:opacity-50"
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(1, prev - 1))
-                      }
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      className="px-4 py-2 border rounded-md text-sm disabled:opacity-50"
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                      }
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
+                <p className="text-sm text-gray-600">
+                  Reason: {item.reason || "N/A"}
+                </p>
+                <button
+                  className="mt-2 text-sm text-red-500 hover:underline"
+                  onClick={() => handleOpenRefundModal(item)}
+                >
+                  Refund Details
+                </button>
               </>
             )}
           </div>
-        </div>
+        ))}
       </div>
+    </>
+  );
+
+  return (
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <Sidebar />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col md:ml-[240px]">
+        {/* Header */}
+        <header className="fixed top-0 left-0 md:left-[240px] right-0 z-30 flex h-14 items-center justify-end bg-white px-4 shadow md:px-6">
+          <AdminProfile />
+        </header>
+
+        {/* Content */}
+        <main className="mt-14 flex-1 p-4 md:p-6">
+          <div className="max-w-full mx-auto">
+            <h1 className="text-2xl font-semibold mb-4">Payment</h1>
+
+            {/* Wallet Balance */}
+            <div className="mb-8 flex justify-center">
+              <div className="bg-black text-white p-6 rounded-xl text-center w-full max-w-xs sm:max-w-sm shadow-md">
+                <p className="text-sm text-gray-400">Wallet Balance</p>
+                <p className="text-2xl sm:text-3xl font-bold">
+                  ${walletBalance !== null ? walletBalance.toLocaleString() : "Loading..."}
+                </p>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="mb-6 border-b border-gray-200">
+              <nav className="-mb-px flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4">
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm sm:py-4 ${
+                    activeTab === "transactions"
+                      ? "border-[#0082ed] text-[#0082ed]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setActiveTab("transactions")}
+                >
+                  Transactions
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm sm:py-4 ${
+                    activeTab === "refund-requests"
+                      ? "border-[#0082ed] text-[#0082ed]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setActiveTab("refund-requests")}
+                >
+                  Refund Requests
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm sm:py-4 ${
+                    activeTab === "pending-requests"
+                      ? "border-[#0082ed] text-[#0082ed]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setActiveTab("pending-requests")}
+                >
+                  Pending Requests
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm sm:py-4 ${
+                    activeTab === "approved-requests"
+                      ? "border-[#0082ed] text-[#0082ed]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setActiveTab("approved-requests")}
+                >
+                  Approved Requests
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm sm:py-4 ${
+                    activeTab === "all-refunds"
+                      ? "border-[#0082ed] text-[#0082ed]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setActiveTab("all-refunds")}
+                >
+                  All Refunds
+                </button>
+              </nav>
+            </div>
+
+            {/* Table/Card View */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              {isLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="ml-2 text-gray-500">Loading...</p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-4 text-red-500">{error}</div>
+              ) : (
+                <>
+                  {activeTab === "transactions" &&
+                    (paginatedData.transactions.length === 0 ? (
+                      <div className="text-center py-4">No transactions found</div>
+                    ) : (
+                      renderTable(paginatedData.transactions, "transactions")
+                    ))}
+                  {activeTab === "refund-requests" &&
+                    (paginatedData.refundRequests.length === 0 ? (
+                      <div className="text-center py-4">No refund requests found</div>
+                    ) : (
+                      renderTable(paginatedData.refundRequests, "refunds")
+                    ))}
+                  {activeTab === "pending-requests" &&
+                    (paginatedData.pendingRequests.length === 0 ? (
+                      <div className="text-center py-4">No pending requests found</div>
+                    ) : (
+                      renderTable(paginatedData.pendingRequests, "refunds")
+                    ))}
+                  {activeTab === "approved-requests" &&
+                    (paginatedData.approvedRequests.length === 0 ? (
+                      <div className="text-center py-4">No approved requests found</div>
+                    ) : (
+                      renderTable(paginatedData.approvedRequests, "refunds")
+                    ))}
+                  {activeTab === "all-refunds" &&
+                    (paginatedData.allRefunds.length === 0 ? (
+                      <div className="text-center py-4">No refunds found</div>
+                    ) : (
+                      renderTable(paginatedData.allRefunds, "refunds")
+                    ))}
+
+                  {/* Pagination */}
+                  <div className="px-4 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm text-gray-700">
+                        Show rows:{" "}
+                        <select
+                          className="border rounded-md px-2 py-1"
+                          value={rowsPerPage}
+                          onChange={(e) => {
+                            setRowsPerPage(Number(e.target.value));
+                            setCurrentPage({
+                              transactions: 1,
+                              refundRequests: 1,
+                              pendingRequests: 1,
+                              approvedRequests: 1,
+                              allRefunds: 1,
+                            });
+                          }}
+                        >
+                          {[4, 10, 20, 30].map((size) => (
+                            <option key={size} value={size}>
+                              {size}
+                            </option>
+                          ))}
+                        </select>
+                      </span>
+                      <span className="text-sm text-gray-700">
+                        Page {currentPage[activeTab]} of {totalPages[activeTab]}
+                      </span>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        className="px-4 py-2 border rounded-md text-sm disabled:opacity-50"
+                        onClick={() =>
+                          setCurrentPage((prev) => ({
+                            ...prev,
+                            [activeTab]: Math.max(1, prev[activeTab] - 1),
+                          }))
+                        }
+                        disabled={currentPage[activeTab] === 1}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        className="px-4 py-2 border rounded-md text-sm disabled:opacity-50"
+                        onClick={() =>
+                          setCurrentPage((prev) => ({
+                            ...prev,
+                            [activeTab]: Math.min(totalPages[activeTab], prev[activeTab] + 1),
+                          }))
+                        }
+                        disabled={currentPage[activeTab] === totalPages[activeTab]}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <RefundModal
+        isOpen={isRefundModalOpen}
+        onClose={() => setIsRefundModalOpen(false)}
+        refundRequest={refundRequest}
+        onApprove={handleApproveRefund}
+        onDeny={handleDenyRefund}
+      />
     </div>
   );
 }

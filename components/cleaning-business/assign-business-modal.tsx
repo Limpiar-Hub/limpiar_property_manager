@@ -1,36 +1,42 @@
-"use client"
-
-import { X } from "lucide-react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { useState } from "react"
+import { X } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
 interface CleaningBusiness {
-  id: string
-  name: string
+  _id: string;
+  fullName: string; // Ensure this matches your data structure
 }
 
 interface AssignBusinessModalProps {
-  isOpen: boolean
-  onClose: () => void
-  businesses: CleaningBusiness[]
-  onAssign: (businessId: string) => void
+  isOpen: boolean;
+  onClose: () => void;
+  businesses: CleaningBusiness[];
+  onAssign: (businessId: string) => void;
 }
 
-export function AssignBusinessModal({ isOpen, onClose, businesses, onAssign }: AssignBusinessModalProps) {
+export function AssignBusinessModal({
+  isOpen,
+  onClose,
+  businesses,
+  onAssign,
+}: AssignBusinessModalProps) {
   const [selectedBusiness, setSelectedBusiness] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // const filteredBusinesses = businesses.filter((business) =>
-  //   business.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  // )
+  // Filter businesses based on the search query
+  const filteredBusinesses = businesses.filter((business) =>
+    business.fullName && business.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleAssign = () => {
     if (selectedBusiness) {
       onAssign(selectedBusiness);
+      setSelectedBusiness(""); // Reset the selection
+      setSearchQuery(""); // Reset the search query
       onClose();
     }
   };
@@ -54,7 +60,7 @@ export function AssignBusinessModal({ isOpen, onClose, businesses, onAssign }: A
           <div className="mb-6">
             <Input
               type="search"
-              placeholder="Search"
+              placeholder="Search cleaning businesses"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full"
@@ -64,15 +70,24 @@ export function AssignBusinessModal({ isOpen, onClose, businesses, onAssign }: A
           <RadioGroup
             value={selectedBusiness}
             onValueChange={setSelectedBusiness}
+            className="max-h-[300px] overflow-y-auto"
           >
             <div className="space-y-4">
-              {/* {filteredBusinesses.map((business) => (
-                <div key={business.id} className="flex items-center space-x-2">
-                  <RadioGroupItem value={business.id} id={business.id} />
-                  <Label htmlFor={business.id}>{business.name}</Label>
+              {filteredBusinesses.length > 0 ? (
+                filteredBusinesses.map((business) => (
+                  <div
+                    key={business._id}
+                    className="flex items-center space-x-2"
+                  >
+                    <RadioGroupItem value={business._id} id={business._id} />
+                    <Label htmlFor={business._id}>{business.fullName}</Label>
+                  </div>
+                ))
+              ) : (
+                <div className="text-gray-500 text-sm">
+                  No cleaning businesses found.
                 </div>
-              ))} */}
-              <div>Assigning Cleaning Business</div>
+              )}
             </div>
           </RadioGroup>
         </div>
@@ -90,4 +105,3 @@ export function AssignBusinessModal({ isOpen, onClose, businesses, onAssign }: A
     </Dialog>
   );
 }
-

@@ -10,7 +10,6 @@ import { toast } from "@/components/ui/use-toast";
 import {
   fetchProperties,
   fetchPropertyById,
-  verifyProperty,
   deleteProperty,
   updateProperty,
   verifyPropertyCreation,
@@ -102,78 +101,41 @@ export default function PropertyPage() {
   };
 
   console.log(selectedProperty);
-  // const propertyId = selectedProperty?._id;
-  // const propertyManagerId = selectedProperty?.propertyManagerId;
-  // useEffect(() => {
-  //   if (selectedProperty) {
-  //     const fetchPropertyDetails = async () => {
-  //       try {
-  //         const token = localStorage.getItem("token");
-  //         if (!token) {
-  //           throw new Error("No authentication token found");
-  //         }
 
-  //         const response = await fetchPropertyById(
-  //           token,
-  //           selectedProperty.propertyManagerId
-  //         );
-
-  //         console.log("response", response);
-
-  //         // Assuming response.data is an array of properties
-  //         const matchedProperty = response.data.find(
-  //           (property: { _id: string }) => property._id === selectedProperty._id
-  //         );
-  //         setSelectedProperty(matchedProperty);
-
-  //         if (matchedProperty) {
-  //           setSelectedProperty(matchedProperty);
-  //         } else {
-  //           console.warn("Property not found");
-  //         }
-  //       } catch (error) {
-  //         console.error("Error fetching property details:", error);
-  //       }
-  //     };
-
-  //     fetchPropertyDetails();
-  //   }
-  // }, [selectedProperty]);
 
   const handleVerifyProperty = async (
     propertyId: string,
     propertyManagerId: string
   ) => {
-    console.log(propertyId, propertyManagerId);
     try {
       const token = localStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found");
       }
-
+  
       // Call the API to verify the property
-      const response = await verifyPropertyCreation(
+      const verificationResponse = await verifyPropertyCreation(
         token,
         propertyId,
         propertyManagerId
       );
-
+  
+      console.log("Verification Response:", verificationResponse);
+  
       // Update the property in the list
-      setProperties(
-        properties.map((p) =>
+      setProperties((prev) =>
+        prev.map((p) =>
           p._id === propertyId ? { ...p, status: "verified" } : p
         )
       );
-
+  
       toast({
         title: "Success",
         description: "Property verified successfully.",
       });
-
-      // Close the modal if it's open
+  
+      // Close modal and refresh the property list
       setIsModalOpen(false);
-
-      // Refresh the properties list to ensure we have the latest data
       fetchPropertiesList();
     } catch (error) {
       console.error("Error verifying property:", error);
@@ -186,6 +148,7 @@ export default function PropertyPage() {
       });
     }
   };
+  
   const handleDeleteProperty = async (id: string) => {
     try {
       const token = localStorage.getItem("token");

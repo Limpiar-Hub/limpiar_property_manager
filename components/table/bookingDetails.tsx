@@ -17,14 +17,14 @@ interface Bookings {
   createdAt: string;
   updatedAt: string;
   managerId?: string;
-  propertyId: Property; // ✅ Added missing property
-  serviceType: string; // ✅ Added missing property
-  price: number; // ✅ Added missing property
-  time: string; // ✅ Added missing property
+  propertyId: Property;
+  serviceType: string;
+  price: number;
+  time: string;
 }
 
 interface BookingDetailsProps {
-  bookingHistory: { data: Bookings[] }; // ✅ Corrected expected prop type
+  bookingHistory: { data: Bookings[] };
   isLoading: boolean;
   error: string | null;
   setSelectedBooking: (booking: Bookings) => void;
@@ -38,83 +38,114 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
   setSelectedBooking,
   setIsModalOpen,
 }) => {
-  console.log(bookingHistory);
-
   const handleClick = (booking: Bookings) => {
-    console.log("Selected Booking:", booking);
     setSelectedBooking(booking);
-
     setIsModalOpen(true);
   };
 
-  return (
-    <>
-      <div className="bg-white rounded-lg border border-gray-200">
-        {isLoading ? (
-          <p className="text-center py-8 text-gray-500">Loading...</p>
-        ) : error ? (
-          <p className="text-center py-8 text-red-500">{error}</p>
-        ) : bookingHistory?.data?.length === 0 || !bookingHistory ? (
-          <div className="text-center py-8 text-gray-500">
-            <p className="mb-2">No Bookings found</p>
-          </div>
-        ) : (
-          <table className="min-w-full">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Property
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Service
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Time
-                </th>
-                <th className="py-3 px-4"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookingHistory.data.map((booking) => (
-                <tr
-                  key={booking._id}
-                  className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => handleClick(booking)}
-                >
-                  <td className="py-4 px-4 text-sm text-gray-900">
-                    <div>
-                      <div className="font-medium">
-                        {booking.propertyId?.name ?? "N/A"}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-900">
-                    {booking.serviceType ?? "N/A"}
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-500">
-                    {booking.price ?? "N/A"}
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-500">
-                    {new Date(booking.updatedAt).toLocaleDateString()}
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-500">
-                    {booking.time
-                      ? new Date(booking.time).toLocaleTimeString()
-                      : "N/A"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+  if (isLoading) {
+    return <p className="text-center py-8 text-gray-500">Loading...</p>;
+  }
+
+  if (error) {
+    return <p className="text-center py-8 text-red-500">{error}</p>;
+  }
+
+  if (!bookingHistory || bookingHistory.data.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p className="mb-2">No Bookings found</p>
       </div>
-    </>
+    );
+  }
+
+  const bookings = bookingHistory.data;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200">
+      {/* Desktop View */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="min-w-full">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Property
+              </th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Service
+              </th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Amount
+              </th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Time
+              </th>
+              <th className="py-3 px-4"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {bookings.map((booking) => (
+              <tr
+                key={booking._id}
+                className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer"
+                onClick={() => handleClick(booking)}
+              >
+                <td className="py-4 px-4 text-sm text-gray-900 font-medium">
+                  {booking.propertyId?.name ?? "N/A"}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-900">
+                  {booking.serviceType ?? "N/A"}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-500">
+                  ${booking.price?.toFixed(2) ?? "N/A"}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-500">
+                  {new Date(booking.updatedAt).toLocaleDateString()}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-500">
+                  {booking.time
+                    ? new Date(booking.time).toLocaleTimeString()
+                    : "N/A"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile View */}
+      <div className="block md:hidden max-h-[500px] overflow-y-auto p-4 space-y-4">
+        {bookings.map((booking) => (
+          <div
+            key={booking._id}
+            className="border rounded-lg p-4 shadow-sm cursor-pointer hover:bg-gray-50"
+            onClick={() => handleClick(booking)}
+          >
+            <p className="text-sm text-gray-900 font-semibold">
+              Property: {booking.propertyId?.name ?? "N/A"}
+            </p>
+            <p className="text-sm text-gray-500">
+              Service: {booking.serviceType ?? "N/A"}
+            </p>
+            <p className="text-sm text-gray-500">
+              Amount: ${booking.price?.toFixed(2) ?? "N/A"}
+            </p>
+            <p className="text-sm text-gray-500">
+              Date: {new Date(booking.updatedAt).toLocaleDateString()}
+            </p>
+            <p className="text-sm text-gray-500">
+              Time:{" "}
+              {booking.time
+                ? new Date(booking.time).toLocaleTimeString()
+                : "N/A"}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 

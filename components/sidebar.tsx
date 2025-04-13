@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -31,11 +31,7 @@ export function Sidebar() {
 
   const menuItems = [
     { href: ROUTES.USERS, icon: Users, label: "Users" },
-    {
-      href: ROUTES.CLEANING_BUSINESSES,
-      icon: Briefcase,
-      label: "Cleaning Business",
-    },
+    { href: ROUTES.CLEANING_BUSINESSES, icon: Briefcase, label: "Cleaning Business" },
     { href: ROUTES.PROPERTIES, icon: Building2, label: "Property" },
     { href: ROUTES.BOOKINGS, icon: CreditCard, label: "Booking" },
     { href: ROUTES.PAYMENTS, icon: CreditCard, label: "Payment" },
@@ -50,7 +46,7 @@ export function Sidebar() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      await logout(); // Make sure the logout function is awaited
+      await logout();
       router.push(ROUTES.LOGIN);
       toast({
         title: "Logged out successfully",
@@ -121,14 +117,14 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile Topbar */}
-      <div className="md:hidden fixed top-0 left-0 z-50 flex h-14 w-full items-center justify-between bg-[#101113] px-2 shadow">
+      <div className="md:hidden fixed top-0 left-0 z-50 flex h-14 w-full items-center justify-between bg-[#101113] px-4 shadow">
         <div className="bg-white w-[100px] h-[40px] rounded-3xl flex items-center justify-center">
           <Image
             src="/logo.jpg"
             alt="Limpiar Logo"
-            width={80}
-            height={30}
-            className="h-8 w-auto rounded-3xl"
+            width={120}
+            height={40}
+            className="h-8 w-auto"
           />
         </div>
         <button onClick={toggleMenu}>

@@ -1,38 +1,17 @@
 "use client";
 
-import { SetStateAction, useState } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { Bell, ChevronDown, Mail, X } from "lucide-react";
 import AdminProfile from "@/components/adminProfile";
 import UserPermissionsModal from "@/components/setting/Setting-modal";
 
-interface Property {
+interface User {
   _id: string;
-  name: string;
-  address: string;
-  type: string;
-  subType: string;
-  size: string;
-  propertyManagerId: string;
-  status: "pending" | "verified";
-  images: string[];
-  createdAt: string;
-  updatedAt: string;
-  managerId?: string;
+  fullName: string;
+  role: string;
+  status: string;
+  availability: boolean;
 }
-
-const users = [
-  { name: "Albert Flores", status: "Active", role: "Super Admin" },
-  { name: "Ronald Richards", status: "Active", role: "Admin" },
-  { name: "Annette Black", status: "Inactive", role: "Supervisor" },
-  { name: "Brooklyn Simmons", status: "Active", role: "Admin" },
-  { name: "Jerome Bell", status: "Active", role: "Supervisor" },
-  { name: "Marvin McKinney", status: "Active", role: "Supervisor" },
-  { name: "Darlene Robertson", status: "Active", role: "Supervisor" },
-  { name: "Ralph Edwards", status: "Inactive", role: "Supervisor" },
-  { name: "Dianne Russell", status: "Active", role: "Supervisor" },
-  { name: "Wade Warren", status: "Active", role: "Supervisor" },
-];
 
 export default function PropertyPage() {
   const [password, setPassword] = useState("");
@@ -40,201 +19,185 @@ export default function PropertyPage() {
   const [tab, setTab] = useState("General");
   const [userModal, setUserModal] = useState(false);
   const [theme, setTheme] = useState("Light");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [users, setUsers] = useState<User[]>([]);
+
   const toggleTab = (tab: string) => setTab(tab);
-  const [selectedUser, setSelectedUser] = useState(null);
+
+  const handleUserClick = (user: User) => {
+    setSelectedUser(user);
+    setUserModal(true);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedLanguage(e.target.value);
   };
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const handleUserClick = (user) => {
-    setUserModal(true);
-    setSelectedUser(user);
-    console.log("clicked");
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch("https://limpiar-backend.onrender.com/api/users", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+        const adminUsers = data
+          .filter((user: User) => user.role === "admin")
+          .map((user: User) => ({
+            ...user,
+            status: user.availability ? "Active" : "Inactive",
+          }));
+        setUsers(adminUsers);
+      } catch (err) {
+        console.error("Failed to fetch users:", err);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      setTheme(savedTheme);
+    }
+  }, []);
+
+  const handleThemeChange = (selectedTheme: string) => {
+    setTheme(selectedTheme);
+    localStorage.setItem("theme", selectedTheme);
   };
+
   return (
-    <div className="flex flex-col  min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white">
       <Sidebar />
-      <div className="flex-1 p-4 lg:p-8  lg:ml-[240px]">
+      <div className="flex-1 p-4 md:p-6 lg:p-8 lg:ml-[240px]">
         <div className="flex justify-end items-center mb-4">
           <AdminProfile />
         </div>
 
         <div className="flex flex-col">
-          <div className="flex flex-col mb-6">
-            <h1 className="text-2xl font-semibold ">Settings</h1>
+          <h1 className="text-xl md:text-2xl font-semibold">Settings</h1>
 
-            <div className="flex gap-8 md:gap-12 mt-8 ">
-              <div className="flex-2  flex flex-col gap-2">
-                <div className="flex h-10 items-center justify-start gap-3 px-2 md:px-4 py-0 cursor-pointer">
-                  <p
-                    className={`text-base font-medium ${
-                      tab === "General" ? "text-black" : "text-gray-500"
-                    }`}
-                    onClick={() => toggleTab("General")}
-                  >
-                    General
-                  </p>
-                </div>
-                <div className="flex h-10 items-center gap-3 px-4 py-0 cursor-pointer">
-                  <p
-                    className={`text-base font-medium ${
-                      tab === "Users" ? "text-black" : "text-gray-500"
-                    }`}
-                    onClick={() => toggleTab("Users")}
-                  >
-                    Users
-                  </p>
-                </div>
+          <div className="flex flex-col md:flex-row gap-4 md:gap-12 mt-6">
+            <div className="flex flex-row md:flex-col gap-4 md:gap-2 w-full md:w-1/5">
+              <div
+                className={`cursor-pointer ${
+                  tab === "General" ? "text-black font-medium" : "text-gray-500"
+                }`}
+                onClick={() => toggleTab("General")}
+              >
+                General
               </div>
+              <div
+                className={`cursor-pointer ${
+                  tab === "Users" ? "text-black font-medium" : "text-gray-500"
+                }`}
+                onClick={() => toggleTab("Users")}
+              >
+                Users
+              </div>
+            </div>
 
+            <div className="w-full md:w-4/5">
               {tab === "General" && (
-                <div className="flex-9  p-2">
-                  <div className="flex-2 flex flex-col gap-4">
-                    <div className="px-4">
-                      <h2 className="text-lg font-semibold">
-                        General Settings
-                      </h2>
-                    </div>
-
-                    <div className="flex flex-col gap-2 px-4">
-                      <label className="text-sm text-gray-700 font-medium">
-                        Password
-                      </label>
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold">General Settings</h2>
+                    <div className="mt-4 space-y-2">
+                      <label className="text-sm text-gray-700 font-medium">Password</label>
                       <input
-                        className="border border-gray-300 rounded-lg px-4 py-2 w-[240px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="border border-gray-300 rounded-lg px-4 py-2 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="*******"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         type="password"
                       />
                     </div>
+                  </div>
 
-                    <div className="h-px w-full bg-gray-200 my-4"></div>
+                  <div className="h-px w-full bg-gray-200" />
 
-                    <div className="px-4">
-                      <h2 className="text-lg font-semibold">Theme</h2>
-                      <div className="flex gap-4 items-center mt-2">
-                        <input
-                          type="radio"
-                          id="light"
-                          name="theme"
-                          value="Light"
-                          checked={theme === "Light"}
-                          onChange={handleChange}
-                        />
-                        <label htmlFor="light">{theme}</label>
+                  <div>
+                    <h2 className="text-lg font-semibold">Theme</h2>
+                    <div className="flex gap-4 items-center mt-2">
+                      <input
+                        type="radio"
+                        id="light"
+                        name="theme"
+                        value="Light"
+                        checked={theme === "Light"}
+                        onChange={() => handleThemeChange("Light")}
+                      />
+                      <label htmlFor="light">Light</label>
 
-                        <input
-                          type="radio"
-                          id="dark"
-                          name="theme"
-                          value="Dark"
-                          onChange={handleChange}
-                          checked={theme === "Dark"}
-                        />
-                        <label htmlFor="dark">{theme}</label>
-                      </div>
+                      <input
+                        type="radio"
+                        id="dark"
+                        name="theme"
+                        value="Dark"
+                        checked={theme === "Dark"}
+                        onChange={() => handleThemeChange("Dark")}
+                      />
+                      <label htmlFor="dark">Dark</label>
                     </div>
                   </div>
                 </div>
               )}
 
               {tab === "Users" && (
-                <div className="w-full overflow-x-auto mx-auto mt-2">
-                  <h2 className="text-base font-semibold mb-4">
-                    User Settings
-                  </h2>
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="py-4 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th className="py-4 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="py-4 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Role
-                          </th>
+                <div className="w-full mt-2">
+                  <h2 className="text-base font-semibold mb-4">User Settings</h2>
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table className="w-full min-w-[480px]">
+                      <thead className="sticky top-0 bg-gray-50">
+                        <tr>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white">
+                      <tbody>
                         {users.map((user) => (
                           <tr
-                            key={user.name}
-                            onClick={() => setUserModal(true)}
+                            key={user._id}
+                            onClick={() => handleUserClick(user)}
                             className="border-t border-gray-200 hover:bg-gray-50 cursor-pointer"
                           >
-                            <td className="py-4 px-4 text-sm text-gray-900">
-                              {user.name}
-                            </td>
-                            <td className="py-4 px-4 text-sm">
+                            <td className="py-3 px-4 text-sm text-gray-900">{user.fullName}</td>
+                            <td className="py-3 px-4 text-sm">
                               <span
-                                className={`px-2 py-1 rounded-full text-xs font-normal ${
+                                className={`px-2 py-1 rounded-full text-xs ${
                                   user.status === "Active"
                                     ? "bg-green-100 text-green-800"
                                     : "bg-gray-200 text-black"
                                 }`}
                               >
-                                {user.status}
+                                {user.status || "Inactive"}
                               </span>
                             </td>
-                            <td className="py-4 px-4 text-sm text-gray-900">
-                              {user.role}
-                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-900">{user.role}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-                    <div className="flex items-center">
-                      <span className="text-sm text-gray-700">
-                        Rows per page:
-                      </span>
-                      <select
-                        className="ml-2 border-gray-300 rounded-md text-sm"
-                        value={rowsPerPage}
-                        onChange={(e) => setRowsPerPage(Number(e.target.value))}
-                      >
-                        <option value={10}>10</option>
-                        <option value={20}>20</option>
-                        <option value={30}>30</option>
-                      </select>
-                      <span className="ml-4 text-sm text-gray-700">
-                        showing 1-{Math.min(10, 30)} of 10 rows
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700"
-                        disabled
-                      >
-                        Previous
-                      </button>
-                      <button className="px-3 py-1 rounded border border-gray-300 text-sm text-gray-700">
-                        Next
-                      </button>
-                    </div>
-                  </div>
                 </div>
-              )}
-              {userModal && (
-                <UserPermissionsModal
-                  isOpen={userModal}
-                  onClose={() => setUserModal(false)}
-                  user={selectedUser} // optional if modal needs user data
-                />
               )}
             </div>
           </div>
         </div>
+
+        {userModal && selectedUser && (
+          <UserPermissionsModal
+            isOpen={userModal}
+            onClose={() => setUserModal(false)}
+            user={selectedUser}
+          />
+        )}
       </div>
     </div>
   );
 }
-function setSelectedUser(user: any) {
-  throw new Error("Function not implemented.");
-}
-

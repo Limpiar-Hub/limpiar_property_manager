@@ -289,3 +289,38 @@ export const verifyPropertyCreation = async (token: string, propertyId: string, 
   return response.json()
 }
 
+
+export const fetchBookingById = async (token: string, id: string) => {
+  const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+
+export const assignCleaningBusiness = async (
+  token: string,
+  payload: { bookingId: string; cleaningBusinessId: string; price: number }
+) => {
+  const response = await fetch(`${API_BASE_URL}/bookings/attach-cleaning-business`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
