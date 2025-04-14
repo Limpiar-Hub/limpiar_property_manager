@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Sidebar } from "@/components/Sidebar";
+import { Sidebar } from "@/components/sidebar";
 import { Loader2, Search } from "lucide-react";
 import { CleaningBusinessRequestModal } from "@/components/cleaning-business/cleaning-business-request-modal";
 import { CleaningBusinessDetailsModal } from "@/components/cleaning-business/cleaning-business-details-modal";
 import { toast } from "@/components/ui/use-toast";
-import AdminProfile from "@/components/AdminProfile";
+import AdminProfile from "@/components/adminProfile";
 import { Button } from "@/components/ui/button";
 
 interface CleaningBusiness {
