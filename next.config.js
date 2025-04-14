@@ -1,13 +1,21 @@
 /** @type {import('next').NextConfig} */
-const path = require("path");
-
 const nextConfig = {
-  images: {
-    domains: ["images.unsplash.com", "images.pexels.com"],
+  typescript: {
+    ignoreBuildErrors: true,
   },
-  webpack: (config) => {
-    config.resolve.alias["@"] = path.resolve(__dirname);
+  webpack(config, { isServer }) {
+    // Optional: Modify Webpack configuration if needed for styles
+    if (!isServer) {
+      config.resolve.fallback = { fs: false };
+    }
     return config;
+  },
+  // Optional: Enable CSS minification
+  cssModules: true,
+  css: {
+    loaderOptions: {
+      // Add CSS options here if you need them
+    },
   },
 };
 

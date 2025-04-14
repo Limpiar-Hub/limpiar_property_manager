@@ -8,6 +8,7 @@ interface BookingDetailsModalProps {
   onClose: () => void;
   booking: {
     _id: string;
+    booking: Partial<Booking>;
     propertyManagerId?: string; // Just the ID as a string
     propertyManager?: { fullName: string; email: string; phoneNumber: string }; // The actual user data
     propertyId?: { name: string; address: string; type: string; subType: string };

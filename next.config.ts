@@ -1,8 +1,12 @@
-import type { NextConfig } from "next"
+import { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-}
+  reactStrictMode: true,
+  trailingSlash: false, 
+  output: "standalone", 
+  webpack: (config) => {
+    return config;
+  },
+};
 
-export default nextConfig
-
+export default nextConfig;

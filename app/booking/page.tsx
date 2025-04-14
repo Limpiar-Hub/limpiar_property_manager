@@ -11,8 +11,11 @@ import { toast } from "@/hooks/use-toast";
 import AdminProfile from "@/components/adminProfile";
 
 interface User {
-  name: string;
+  fullName: string;
   avatar?: string;
+  email?: string;
+  phoneNumber?: string;
+
 }
 
 interface TimelineEvent {
@@ -34,15 +37,20 @@ interface Booking {
   amount: string;
   date: string;
   time: string;
-  additionalNote: string;
+  additionalNote?: string;
   status: "Pending" | "On Hold" | "Completed" | "Failed" | "Refund" | "Not Started" | "Active" | "Confirmed" | "Canceled";
   timeline: TimelineEvent[];
+}
+
+interface CleaningBusiness {
+  _id: string;
+  fullName: string;
 }
 
 export default function BookingPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "inactive">("pending");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Partial<Booking> | null>(null);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -196,35 +204,11 @@ export default function BookingPage() {
         }
   
         const data = await res.json();
-        console.log("Fetched booking details:", data); 
-
-        let propertyManagerId: string | undefined;
-      let propertyManagerData: any;
-
-      // Check top-level propertyManagerId
-      if (data.data.propertyManagerId && typeof data.data.propertyManagerId === "object") {
-        propertyManagerId = data.data.propertyManagerId._id;
-        propertyManagerData = data.data.propertyManagerId;
-      }
-      // Check inside propertyId
-      else if (
-        data.data.propertyId &&
-        data.data.propertyId.propertyManagerId &&
-        typeof data.data.propertyId.propertyManagerId === "object"
-      ) {
-        propertyManagerId = data.data.propertyId.propertyManagerId._id;
-        propertyManagerData = data.data.propertyId.propertyManagerId;
-      }
-      // Fallback to user or userId
-      else {
-        propertyManagerId = data.data.userId;
-        propertyManagerData = data.data.user;
-      }
+        console.log("Fetched booking details:", data);
   
-        // Use full user object from fetched booking
         const enrichedBooking = {
-          _id: data.data._id,
-          propertyManagerId: data.data.propertyManagerId?._id || data.data.userId,
+          _id: data.data._id ?? "",
+          propertyManagerId: data.data.propertyManagerId?._id || data.data.userId || "",
           propertyManager: data.data.propertyManagerId
             ? {
                 fullName: data.data.propertyManagerId.fullName || "N/A",
@@ -240,10 +224,10 @@ export default function BookingPage() {
             : undefined,
           propertyId: data.data.propertyId
             ? {
-                name: data.data.propertyId.name,
-                address: data.data.propertyId.address,
-                type: data.data.propertyId.type,
-                subType: data.data.propertyId.subType,
+                name: data.data.propertyId.name || "",
+                address: data.data.propertyId.address || "",
+                type: data.data.propertyId.type || "",
+                subType: data.data.propertyId.subType || "",
               }
             : undefined,
           cleanerId: data.data.cleanerId
@@ -253,15 +237,16 @@ export default function BookingPage() {
                 email: data.data.cleanerId.email || "N/A",
               }
             : undefined,
-          cleaningBusinessId: data.data.cleaningBusinessId,
-          serviceType: data.data.serviceType,
-          price: data.data.price,
-          date: data.data.date,
-          startTime: data.data.startTime,
-          endTime: data.data.endTime,
-          status: data.data.status,
-          uuid: data.data.uuid,
+          cleaningBusinessId: data.data.cleaningBusinessId || "",
+          serviceType: data.data.serviceType || "",
+          price: data.data.price ?? "", // Add fallback
+          date: data.data.date || "",
+          startTime: data.data.startTime ?? "", // Add fallback
+          endTime: data.data.endTime || "",
+          status: data.data.status || "Pending",
+          uuid: data.data.uuid ?? "", // Add fallback
         };
+  
         setSelectedBooking(enrichedBooking);
         setIsDetailsModalOpen(true);
       } catch (error) {
@@ -284,10 +269,10 @@ export default function BookingPage() {
   };
 
   const handleAssignBusiness = async (cleaningBusinessId: string) => {
-    if (!selectedBooking || selectedPrice === null) {
+    if (!selectedBooking || selectedPrice === null || !selectedBooking._id) {
       toast({
         title: "Error",
-        description: "Booking or price not set",
+        description: "Booking, price, or booking ID not set",
         variant: "destructive",
       });
       return;
@@ -299,7 +284,7 @@ export default function BookingPage() {
       price: selectedPrice,
     };
   
-    console.log("Payload being sent:", payload); // Log the payload
+    console.log("Payload being sent:", payload);
   
     try {
       const token = localStorage.getItem("token");
@@ -307,11 +292,10 @@ export default function BookingPage() {
         throw new Error("No authentication token found");
       }
   
-      // Send the payload to the backend
       const response = await fetch(
-        "https://limpiar-backend.onrender.com/api/bookings/attach-cleaning-business", 
+        "https://limpiar-backend.onrender.com/api/bookings/attach-cleaning-business",
         {
-          method: "POST", 
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
@@ -320,18 +304,19 @@ export default function BookingPage() {
         }
       );
   
-      const responseData = await response.json(); 
-      console.log("Response from API:", responseData); 
+      const responseData = await response.json();
+      console.log("Response from API:", responseData);
   
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}, message: ${responseData.message || "No additional message"}`);
       }
   
-      const updatedBooking = {
+      const updatedBooking: Booking = {
         ...selectedBooking,
+        _id: selectedBooking._id,
         cleaningBusinessId,
         amount: selectedPrice.toString(),
-        status: "Active" as const,
+        status: "Active",
         timeline: [
           ...(selectedBooking.timeline ?? []),
           {
@@ -339,10 +324,17 @@ export default function BookingPage() {
             time: new Date().toLocaleTimeString(),
             event: "Booking assigned to cleaning business",
             user: {
-              name: "Admin",
+              fullName: "Admin", // Changed from name to fullName
             },
           },
         ],
+        propertyManager: selectedBooking.propertyManager ?? { fullName: "N/A" }, // Updated to fullName
+        serviceType: selectedBooking.serviceType ?? "",
+        property: selectedBooking.property ?? "",
+        service: selectedBooking.service ?? "",
+        date: selectedBooking.date ?? "",
+        time: selectedBooking.time ?? "",
+        additionalNote: selectedBooking.additionalNote,
       };
   
       setBookings((prev) =>
@@ -350,7 +342,7 @@ export default function BookingPage() {
       );
       setSelectedBooking(updatedBooking);
       setIsAssignModalOpen(false);
-      setSelectedPrice(null); // Reset the price
+      setSelectedPrice(null);
   
       toast({
         title: "Success",
@@ -599,34 +591,35 @@ export default function BookingPage() {
       </div>
 
       {selectedBooking && (
-        <>
-          <BookingRequestModal
-            isOpen={isRequestModalOpen}
-            onClose={() => {
-              setIsRequestModalOpen(false);
-              setSelectedPrice(null);
-            }}
-            bookingId={selectedBooking._id}
-            onDecline={() => setIsRequestModalOpen(false)}
-            onAssign={handleAssignClick}
-          />
-          <BookingDetailsModal
-            isOpen={isDetailsModalOpen}
-            onClose={() => setIsDetailsModalOpen(false)}
-            booking={selectedBooking}
-          />
- <AssignBusinessModal
-  isOpen={isAssignModalOpen}
-  onClose={() => {
-    setIsAssignModalOpen(false);
-    setSelectedPrice(null);
-  }}
-  onAssign={handleAssignBusiness}
-  businesses={businessList}
-/>
-
-        </>
-      )}
+  <>
+    <BookingRequestModal
+      isOpen={isRequestModalOpen}
+      onClose={() => {
+        setIsRequestModalOpen(false);
+        setSelectedPrice(null);
+      }}
+      bookingId={selectedBooking._id ?? ""} // Add fallback
+      onDecline={() => setIsRequestModalOpen(false)}
+      onAssign={handleAssignClick}
+    />
+    <BookingDetailsModal
+      isOpen={isDetailsModalOpen}
+      onClose={() => setIsDetailsModalOpen(false)}
+      booking={selectedBooking}
+    />
+    <AssignBusinessModal
+      isOpen={isAssignModalOpen}
+      onClose={() => {
+        setIsAssignModalOpen(false);
+        setSelectedPrice(null);
+      }}
+      onAssign={handleAssignBusiness}
+      businesses={businessList}
+    />
+  </>
+)}
     </div>
+
+    
   );
 }
