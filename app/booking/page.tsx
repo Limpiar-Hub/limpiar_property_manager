@@ -94,8 +94,13 @@ export default function BookingPage() {
         propertyManagerId: booking.userId,
         propertyManager: booking.user, 
       }));
-  
-      setBookings(mappedBookings);
+      
+      const sortedBookings = mappedBookings.sort((a, b) => {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      });
+      
+      setBookings(sortedBookings);
+      
     } catch (error) {
       console.error("Error fetching bookings:", error);
       setError(error instanceof Error ? error.message : "An unknown error occurred");

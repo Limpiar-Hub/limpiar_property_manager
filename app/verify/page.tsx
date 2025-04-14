@@ -170,29 +170,27 @@ export default function VerifyPage() {
 
   const handleResendOTP = async () => {
     if (timeLeft > 0) return;
-
+  
     try {
-      const payload = userId
-        ? { userId }
-        : phoneNumber
-        ? { phoneNumber }
-        : null;
-
-      if (!payload) {
-        throw new Error(
-          "No user ID or phone number available for resending OTP"
-        );
+      if (!userId) {
+        console.error("Missing userId");
+        throw new Error("User ID is required to resend OTP.");
       }
-
+  
+      const payload = { userId };
+      console.log("Sending payload:", payload);
+  
       const result = await resendOTP(payload);
-
-      if (!result.success) {
-        throw new Error(result.message);
+      console.log("Resend OTP result:", result);
+  
+      // Optional: you can adjust this logic based on the exact message or response shape
+      if (!result || !result.message?.includes("OTP resent")) {
+        throw new Error(result.message || "Failed to resend OTP. Please try again.");
       }
-
+  
       setTimeLeft(60);
       setOtp(["", "", "", "", "", ""]);
-
+  
       toast({
         title: "Code resent",
         description: "A new verification code has been sent to your phone.",
@@ -209,6 +207,9 @@ export default function VerifyPage() {
       });
     }
   };
+  
+  
+  
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
