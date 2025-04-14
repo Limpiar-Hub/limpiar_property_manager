@@ -129,10 +129,15 @@ export default function CleaningBusinessPage() {
 
   const handleBusinessClick = (business: CleaningBusiness) => {
     setSelectedBusiness(business);
-    (business.availability
-      ? setIsDetailsModalOpen(true)
-      : setIsRequestModalOpen(true));
-
+  
+    if (business.availability) {
+      setIsDetailsModalOpen(true);
+    } else {
+      setIsRequestModalOpen(true);
+    }
+  };
+  
+  
   const handleApprove = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
