@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
+const path = require("path");
+
 const nextConfig = {
   images: {
-    domains: ["images.unsplash.com", "images.pexels.com"], // Add multiple domains
+    domains: ["images.unsplash.com", "images.pexels.com"],
+  },
+  webpack: (config) => {
+    config.resolve.alias["@"] = path.resolve(__dirname);
+    return config;
   },
 };
 
