@@ -129,10 +129,9 @@ export default function CleaningBusinessPage() {
 
   const handleBusinessClick = (business: CleaningBusiness) => {
     setSelectedBusiness(business);
-    business.availability
+    (business.availability
       ? setIsDetailsModalOpen(true)
-      : setIsRequestModalOpen(true);
-  };
+      : setIsRequestModalOpen(true));
 
   const handleApprove = async (id: string) => {
     try {
