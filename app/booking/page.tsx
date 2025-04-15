@@ -96,10 +96,11 @@ export default function BookingPage() {
       }));
       
       const sortedBookings = mappedBookings.sort((a, b) => {
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); 
       });
       
       setBookings(sortedBookings);
+      
       
     } catch (error) {
       console.error("Error fetching bookings:", error);
