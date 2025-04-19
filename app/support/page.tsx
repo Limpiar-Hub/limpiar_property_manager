@@ -510,9 +510,9 @@ export default function HelpAndSupportPage() {
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 flex flex-col-reverse">
               {selectedTicket.messages.length === 0 ? (
-                <p className="text-gray-600 text-center text-sm md:text-base mt-auto">
-                  We're here to help! No messages in this ticket yet.
-                </p>
+                 <p className="text-gray-600 text-center text-sm md:text-base mt-auto">
+                 We're here to help! No messages in this ticket yet.
+               </p>
               ) : (
                 [...selectedTicket.messages]
                   .reverse()
