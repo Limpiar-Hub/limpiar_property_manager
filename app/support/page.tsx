@@ -423,11 +423,11 @@ export default function HelpAndSupportPage() {
         .slide-in {
           animation: slideIn 0.5s ease-out;
         }
-        .hover-scale {
+        .touch-scale {
           transition: transform 0.2s ease;
         }
-        .hover-scale:hover {
-          transform: scale(1.05);
+        .touch-scale:active {
+          transform: scale(0.95);
         }
       `}</style>
 
@@ -435,10 +435,10 @@ export default function HelpAndSupportPage() {
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 pt-16 md:pt-0 p-6 lg:p-10 md:ml-[240px]">
-        {/* Desktop Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-navy-800 tracking-tight">
+      <div className="flex-1 pt-16 md:pt-0 p-4 sm:p-6 lg:p-8 md:ml-[240px]">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-navy-800 tracking-tight">
             Customer Support Hub
           </h1>
           <AdminProfile />
@@ -446,29 +446,29 @@ export default function HelpAndSupportPage() {
 
         {selectedTicket ? (
           // Full-Screen Chat View
-          <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] bg-white rounded-2xl shadow-xl">
+          <div className="flex flex-col h-[calc(100vh-120px)] sm:h-[calc(100vh-140px)] bg-white rounded-2xl shadow-xl">
             {/* Chat Header */}
             <div className="flex items-center justify-between p-4 bg-navy-800 text-white rounded-t-2xl">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   onClick={() => setSelectedTicket(null)}
-                  className="text-white hover:text-gray-200 transition-colors"
+                  className="text-white hover:text-gray-200 transition-colors touch-scale"
                 >
-                  <ArrowLeft className="h-6 w-6" />
+                  <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
                 </button>
-                <h2 className="text-xl md:text-2xl font-semibold truncate">
+                <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold truncate max-w-[150px] sm:max-w-[200px]">
                   Ticket #{selectedTicket.intercomTicketId || "N/A"}
                 </h2>
                 {selectedTicket.escalated && (
                   <span className="flex items-center gap-1 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded-full blink">
-                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
                     Escalated
                   </span>
                 )}
               </div>
               <Button
                 onClick={() => setSelectedTicket(null)}
-                className="bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2 rounded-lg hover-scale"
+                className="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-2 rounded-lg touch-scale"
               >
                 Close
               </Button>
@@ -477,29 +477,29 @@ export default function HelpAndSupportPage() {
             {/* Support Actions for Escalated Tickets */}
             {selectedTicket.escalated && (
               <div className="p-4 bg-red-50 border-b border-red-200">
-                <h3 className="text-lg font-semibold text-red-800 mb-3">Support Actions</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-red-800 mb-3">Support Actions</h3>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={() => handleSupportAction(selectedTicket._id, "refund")}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded-lg hover-scale"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-3 py-2 rounded-lg touch-scale"
                   >
                     Issue Refund
                   </Button>
                   <Button
                     onClick={() => handleSupportAction(selectedTicket._id, "rebook")}
-                    className="bg-green-500 hover:bg-green-600 text-white text-sm px-4 py-2 rounded-lg hover-scale"
+                    className="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-2 rounded-lg touch-scale"
                   >
                     Rebook Service
                   </Button>
                   <Button
                     onClick={() => handleSupportAction(selectedTicket._id, "escalate")}
-                    className="bg-orange-500 hover:bg-orange-600 text-white text-sm px-4 py-2 rounded-lg hover-scale"
+                    className="bg-orange-500 hover:bg-orange-600 text-white text-sm px-3 py-2 rounded-lg touch-scale"
                   >
                     Escalate Further
                   </Button>
                   <Button
                     onClick={() => handleSupportAction(selectedTicket._id, "close")}
-                    className="bg-gray-500 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-lg hover-scale"
+                    className="bg-gray-500 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded-lg touch-scale"
                   >
                     Close Ticket
                   </Button>
@@ -508,11 +508,11 @@ export default function HelpAndSupportPage() {
             )}
 
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 flex flex-col-reverse">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50 flex flex-col-reverse">
               {selectedTicket.messages.length === 0 ? (
-                 <p className="text-gray-600 text-center text-sm md:text-base mt-auto">
-                 We're here to help! No messages in this ticket yet.
-               </p>
+                <p className="text-gray-600 text-center text-sm sm:text-base mt-auto">
+                  We're here to help! No messages in this ticket yet.
+                </p>
               ) : (
                 [...selectedTicket.messages]
                   .reverse()
@@ -529,9 +529,9 @@ export default function HelpAndSupportPage() {
                         } fade-in`}
                         style={{ animationDelay: `${index * 0.1}s` }}
                       >
-                        <div className="flex items-start gap-3 max-w-[85%] md:max-w-[70%]">
+                        <div className="flex items-start gap-2 sm:gap-3 max-w-[85%] sm:max-w-[70%]">
                           <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-bold shadow-md ${
+                            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white text-sm sm:text-base font-bold shadow-md ${
                               isSender
                                 ? "bg-gradient-to-br from-gray-600 to-gray-800"
                                 : message.senderType === "bot"
@@ -550,7 +550,7 @@ export default function HelpAndSupportPage() {
                               : "S"}
                           </div>
                           <div
-                            className={`p-4 rounded-xl shadow-lg ${
+                            className={`p-3 sm:p-4 rounded-xl shadow-lg ${
                               isSender
                                 ? "bg-gradient-to-br from-gray-200 to-gray-300 text-gray-800 rounded-br-none"
                                 : message.senderType === "bot"
@@ -560,7 +560,7 @@ export default function HelpAndSupportPage() {
                                 : "bg-gradient-to-br from-blue-100 to-blue-200 text-gray-800 rounded-bl-none"
                             }`}
                           >
-                            <p className="text-base leading-relaxed">
+                            <p className="text-sm sm:text-base leading-relaxed">
                               {message.text || "No content"}
                             </p>
                             {message.fileUrl && (
@@ -569,14 +569,14 @@ export default function HelpAndSupportPage() {
                                   <img
                                     src={message.fileUrl}
                                     alt="Attachment"
-                                    className="max-w-[200px] rounded-lg shadow-sm"
+                                    className="max-w-[150px] sm:max-w-[200px] rounded-lg shadow-sm"
                                   />
                                 ) : (
                                   <a
                                     href={message.fileUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-sm underline text-blue-600 hover:text-blue-800"
+                                    className="text-xs sm:text-sm underline text-blue-600 hover:text-blue-800"
                                   >
                                     Download Attachment
                                   </a>
@@ -605,9 +605,9 @@ export default function HelpAndSupportPage() {
             {/* Reply Input */}
             <div className="p-4 bg-white border-t border-gray-200">
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <textarea
-                    className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-navy-600 min-h-[80px] text-base resize-none shadow-sm"
+                    className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-navy-600 min-h-[80px] text-sm sm:text-base resize-none shadow-sm"
                     placeholder="Type your reply..."
                     value={replyMessage}
                     onChange={(e) => setReplyMessage(e.target.value)}
@@ -623,13 +623,13 @@ export default function HelpAndSupportPage() {
                   </label>
                   <Button
                     onClick={() => handleReply(selectedTicket._id)}
-                    className="bg-navy-600 text-white hover:bg-navy-700 px-4 py-2 rounded-lg hover-scale"
+                    className="bg-navy-600 text-white hover:bg-navy-700 px-3 py-2 rounded-lg touch-scale"
                   >
                     <Send className="h-5 w-5" />
                   </Button>
                 </div>
                 {selectedFile && (
-                  <p className="text-sm text-gray-600 mt-2 truncate">
+                  <p className="text-xs sm:text-sm text-gray-600 mt-2 truncate">
                     File: {selectedFile.name}
                   </p>
                 )}
@@ -645,7 +645,7 @@ export default function HelpAndSupportPage() {
                 <input
                   type="search"
                   placeholder="Search tickets by ID or message..."
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy-600 text-base shadow-sm transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy-600 text-sm sm:text-base shadow-sm transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -653,9 +653,9 @@ export default function HelpAndSupportPage() {
             </div>
 
             <div className="mb-6 border-b border-gray-200">
-              <nav className="flex space-x-6">
+              <nav className="flex space-x-4 sm:space-x-6 overflow-x-auto">
                 <button
-                  className={`py-3 px-2 border-b-2 text-base font-semibold transition-all ${
+                  className={`py-3 px-2 border-b-2 text-sm sm:text-base font-semibold transition-all whitespace-nowrap ${
                     activeTab === "unread"
                       ? "border-navy-600 text-navy-600"
                       : "border-transparent text-gray-600 hover:text-navy-600 hover:border-navy-300"
@@ -665,7 +665,7 @@ export default function HelpAndSupportPage() {
                   Unread ({unreadTicketsLength})
                 </button>
                 <button
-                  className={`py-3 px-2 border-b-2 text-base font-semibold transition-all ${
+                  className={`py-3 px-2 border-b-2 text-sm sm:text-base font-semibold transition-all whitespace-nowrap ${
                     activeTab === "read"
                       ? "border-navy-600 text-navy-600"
                       : "border-transparent text-gray-600 hover:text-navy-600 hover:border-navy-300"
@@ -675,7 +675,7 @@ export default function HelpAndSupportPage() {
                   Read ({readTicketsLength})
                 </button>
                 <button
-                  className={`py-3 px-2 border-b-2 text-base font-semibold transition-all ${
+                  className={`py-3 px-2 border-b-2 text-sm sm:text-base font-semibold transition-all whitespace-nowrap ${
                     activeTab === "escalated"
                       ? "border-red-600 text-red-600"
                       : "border-transparent text-gray-600 hover:text-red-600 hover:border-red-300"
@@ -691,23 +691,23 @@ export default function HelpAndSupportPage() {
               {isLoading ? (
                 <div className="flex justify-center items-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-navy-600" />
-                  <p className="ml-3 text-gray-600 text-base">
+                  <p className="ml-3 text-gray-600 text-sm sm:text-base">
                     Loading Support Tickets...
                   </p>
                 </div>
               ) : error ? (
                 <div className="text-center py-12 text-red-600">
-                  <p className="mb-4 text-base">{error}</p>
+                  <p className="mb-4 text-sm sm:text-base">{error}</p>
                   <Button
                     onClick={fetchSupportTickets}
-                    className="bg-navy-600 hover:bg-navy-700 text-white text-base px-6 py-2 rounded-lg hover-scale"
+                    className="bg-navy-600 hover:bg-navy-700 text-white text-sm sm:text-base px-4 sm:px-6 py-2 rounded-lg touch-scale"
                   >
                     Retry
                   </Button>
                 </div>
               ) : filteredTickets.length === 0 ? (
                 <div className="text-center py-12 text-gray-600">
-                  <p className="text-base">
+                  <p className="text-sm sm:text-base">
                     {activeTab === "escalated"
                       ? "No escalated tickets found."
                       : "We're here to help! No tickets found for this category."}
@@ -720,19 +720,19 @@ export default function HelpAndSupportPage() {
                     <table className="min-w-full table-auto border-collapse">
                       <thead className="bg-navy-50">
                         <tr>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide">
+                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[120px]">
                             Ticket ID
                           </th>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide">
+                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[200px]">
                             Last Message
                           </th>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide">
+                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[120px]">
                             Date
                           </th>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide">
+                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[100px]">
                             Status
                           </th>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide">
+                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[120px]">
                             Actions
                           </th>
                         </tr>
@@ -743,14 +743,14 @@ export default function HelpAndSupportPage() {
                             key={ticket._id}
                             className={`hover:bg-gray-50 cursor-pointer slide-in ${
                               ticket.escalated ? "border-l-4 border-red-600 blink" : ""
-                              } ${isRecentTicket(ticket.updatedAt) ? "bg-blue-50" : ""}`}
+                            } ${isRecentTicket(ticket.updatedAt) ? "bg-blue-50" : ""}`}
                             style={{ animationDelay: `${index * 0.1}s` }}
                             onClick={() => handleViewDetails(ticket)}
                           >
-                            <td className="py-4 px-6 text-sm text-gray-900 font-medium">
+                            <td className="py-4 px-6 text-sm text-gray-900 font-medium truncate">
                               {ticket.intercomTicketId || "N/A"}
                             </td>
-                            <td className="py-4 px-6 text-sm text-gray-900">
+                            <td className="py-4 px-6 text-sm text-gray-900 truncate max-w-[250px]">
                               {ticket.messages.length > 0
                                 ? ticket.messages[ticket.messages.length - 1].text || "No content"
                                 : "No messages"}
@@ -777,7 +777,7 @@ export default function HelpAndSupportPage() {
                             </td>
                             <td className="py-4 px-6">
                               <button
-                                className="text-navy-600 hover:underline text-sm font-medium hover-scale"
+                                className="text-navy-600 text-sm font-medium hover:underline touch-scale"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleViewDetails(ticket);
@@ -797,25 +797,25 @@ export default function HelpAndSupportPage() {
                     {paginatedTickets.map((ticket, index) => (
                       <div
                         key={ticket._id}
-                        className={`p-6 hover:bg-gray-50 cursor-pointer slide-in ${
+                        className={`p-4 hover:bg-gray-50 cursor-pointer slide-in ${
                           ticket.escalated ? "border-l-4 border-red-600 blink" : ""
                         } ${isRecentTicket(ticket.updatedAt) ? "bg-blue-50" : ""}`}
                         style={{ animationDelay: `${index * 0.1}s` }}
                         onClick={() => handleViewDetails(ticket)}
                       >
                         <div className="flex justify-between items-start">
-                          <div>
-                            <p className="text-base font-semibold text-gray-900">
+                          <div className="max-w-[70%]">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
                               Ticket #{ticket.intercomTicketId || "N/A"}
                             </p>
-                            <p className="text-sm text-gray-600 mt-1 truncate">
+                            <p className="text-xs text-gray-600 mt-1 truncate">
                               {ticket.messages.length > 0
                                 ? ticket.messages[ticket.messages.length - 1].text || "No content"
                                 : "No messages"}
                             </p>
                           </div>
                           <span
-                            className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                            className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               ticket.escalated
                                 ? "bg-red-100 text-red-800 blink"
                                 : ticket.readStatus
@@ -826,8 +826,8 @@ export default function HelpAndSupportPage() {
                             {ticket.escalated ? "Escalated" : ticket.readStatus ? "Read" : "Unread"}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center mt-3">
-                          <p className="text-sm text-gray-500 font-medium">
+                        <div className="flex justify-between items-center mt-2">
+                          <p className="text-xs text-gray-500 font-medium">
                             {new Date(ticket.updatedAt).toLocaleDateString("en-US", {
                               month: "2-digit",
                               day: "2-digit",
@@ -835,7 +835,7 @@ export default function HelpAndSupportPage() {
                             })}
                           </p>
                           <button
-                            className="text-navy-600 text-sm font-medium hover:underline hover-scale"
+                            className="text-navy-600 text-xs font-medium hover:underline touch-scale"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleViewDetails(ticket);
@@ -849,12 +849,12 @@ export default function HelpAndSupportPage() {
                   </div>
 
                   {/* Pagination */}
-                  <div className="px-6 py-4 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div className="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="flex items-center space-x-4">
-                      <span className="text-sm text-gray-700">
+                      <span className="text-xs sm:text-sm text-gray-700">
                         Show rows:
                         <select
-                          className="border rounded-lg px-3 py-1 ml-2 text-sm bg-white shadow-sm"
+                          className="border rounded-lg px-2 sm:px-3 py-1 ml-2 text-xs sm:text-sm bg-white shadow-sm"
                           value={rowsPerPage}
                           onChange={(e) => {
                             setRowsPerPage(Number(e.target.value));
@@ -868,13 +868,13 @@ export default function HelpAndSupportPage() {
                           ))}
                         </select>
                       </span>
-                      <span className="text-sm text-gray-700">
+                      <span className="text-xs sm:text-sm text-gray-700">
                         Page {currentPage} of {totalPages}
                       </span>
                     </div>
                     <div className="flex space-x-2">
                       <button
-                        className="px-4 py-2 border rounded-lg text-sm bg-white shadow-sm disabled:opacity-50 hover-scale"
+                        className="px-3 sm:px-4 py-2 border rounded-lg text-xs sm:text-sm bg-white shadow-sm disabled:opacity-50 touch-scale"
                         onClick={() =>
                           setCurrentPage((prev) => Math.max(1, prev - 1))
                         }
@@ -883,7 +883,7 @@ export default function HelpAndSupportPage() {
                         Previous
                       </button>
                       <button
-                        className="px-4 py-2 border rounded-lg text-sm bg-white shadow-sm disabled:opacity-50 hover-scale"
+                        className="px-3 sm:px-4 py-2 border rounded-lg text-xs sm:text-sm bg-white shadow-sm disabled:opacity-50 touch-scale"
                         onClick={() =>
                           setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                         }
