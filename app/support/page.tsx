@@ -623,9 +623,9 @@ export default function HelpAndSupportPage() {
                   </label>
                   <Button
                     onClick={() => handleReply(selectedTicket._id)}
-                    className="bg-navy-600 text-white hover:bg-navy-700 px-3 py-2 rounded-lg touch-scale"
+                    className="bg-white text-blue-500 hover:bg-blue-50 border border-blue-500 p-2 rounded-lg touch-scale"
                   >
-                    <Send className="h-5 w-5" />
+                    <Send className="h-6 w-6" />
                   </Button>
                 </div>
                 {selectedFile && (
