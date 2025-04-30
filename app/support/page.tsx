@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { Loader2, Search, ArrowLeft, Send, Paperclip, AlertTriangle, Check, CheckCheck, Clock } from "lucide-react";
+import { Loader2, Search, ArrowLeft, Send, Paperclip, AlertTriangle, Check, CheckCheck, Clock, Headphones } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import AdminProfile from "@/components/adminProfile";
 import { Button } from "@/components/ui/button";
@@ -36,15 +37,16 @@ interface SupportTicket {
 
 const MessageItem = React.memo(
   ({ message, isSender, index }: { message: SupportMessage; isSender: boolean; index: number }) => {
+    console.log(`Rendering MessageItem: localId=${message.localId}, text=${message.text}, status=${message.status}`);
     return (
       <div
         key={message._id || message.localId}
-        className={`flex mb-3 ${isSender ? "justify-start" : "justify-end"} ${index === 0 ? "slide-in" : ""}`}
+        className={`flex mb-2 sm:mb-3 ${isSender ? "justify-start" : "justify-end"} ${index === 0 ? "slide-in" : ""}`}
         style={{ animationDelay: `${index * 0.05}s` }}
       >
-        <div className={`flex items-end gap-2 max-w-[75%] chat-bubble ${isSender ? "flex-row" : "flex-row-reverse"}`}>
+        <div className={`flex items-end gap-1 sm:gap-2 max-w-[80%] sm:max-w-[75%] chat-bubble ${isSender ? "flex-row" : "flex-row-reverse"}`}>
           <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium shadow-sm ${
+            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-white text-xs font-medium shadow-sm ${
               isSender
                 ? "bg-gray-600"
                 : message.senderType === "bot"
@@ -63,7 +65,7 @@ const MessageItem = React.memo(
               : "S"}
           </div>
           <div
-            className={`p-3 rounded-lg shadow-sm text-sm ${
+            className={`p-2 sm:p-3 rounded-lg shadow-sm text-xs sm:text-sm ${
               isSender
                 ? "bg-white text-gray-800 rounded-bl-none"
                 : "bg-blue-100 text-gray-800 rounded-br-none"
@@ -71,12 +73,12 @@ const MessageItem = React.memo(
           >
             <p className="leading-relaxed">{message.text || "No content"}</p>
             {message.fileUrl && (
-              <div className="mt-2">
+              <div className="mt-1 sm:mt-2">
                 {message.fileType === "image" ? (
                   <img
                     src={message.fileUrl}
                     alt="Attachment"
-                    className="max-w-[120px] rounded-md"
+                    className="max-w-[100px] sm:max-w-[120px] rounded-md"
                   />
                 ) : (
                   <a
@@ -90,7 +92,7 @@ const MessageItem = React.memo(
                 )}
               </div>
             )}
-            <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
+            <div className="flex items-center justify-between mt-1 text-[10px] sm:text-xs text-gray-500">
               <span>
                 {new Date(message.timestamp).toLocaleString("en-US", {
                   hour: "2-digit",
@@ -143,7 +145,6 @@ export default function HelpAndSupportPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const inputValueRef = useRef<string>("");
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -190,8 +191,9 @@ export default function HelpAndSupportPage() {
         ticket.messages.forEach((msg: SupportMessage, msgIndex: number) => {
           if (msg.text == null) {
             console.warn(
-              `Null or undefined text in ticket ${ticket.intercomTicketId || "N/A"}, message ${msgIndex}`
+              `Null or undefined text in ticket ${ticket.intercomTicketId || "N/A"}, message ${msgIndex}, setting to empty string`
             );
+            msg.text = "";
           }
           msg.status = "delivered";
         });
@@ -279,6 +281,10 @@ export default function HelpAndSupportPage() {
       }
 
       data.data.messages.forEach((msg: SupportMessage) => {
+        if (msg.text == null) {
+          console.warn(`Null text in fetched message, setting to empty string`);
+          msg.text = "";
+        }
         msg.status = "delivered";
       });
 
@@ -302,10 +308,14 @@ export default function HelpAndSupportPage() {
 
   const handleReply = useCallback(
     async (chatId: string) => {
-      if (!inputValueRef.current.trim() && !selectedFile) {
+      const messageText = replyMessage.trim();
+      console.log(`handleReply: chatId=${chatId}, messageText="${messageText}", selectedFile=${!!selectedFile}`);
+      
+      if (!messageText && !selectedFile) {
+        console.warn("Attempted to send empty message without file");
         toast({
           title: "Error",
-          description: "Message or file attachment is required",
+          description: "Please enter a message or attach a file",
           variant: "destructive",
         });
         return;
@@ -315,7 +325,7 @@ export default function HelpAndSupportPage() {
       const optimisticMessage: SupportMessage = {
         senderId: "admin",
         senderType: "admin",
-        text: inputValueRef.current || null,
+        text: messageText || null,
         fileUrl: selectedFile ? URL.createObjectURL(selectedFile) : null,
         fileType: selectedFile ? (selectedFile.type.startsWith("image") ? "image" : "file") : "",
         timestamp: new Date().toISOString(),
@@ -326,13 +336,13 @@ export default function HelpAndSupportPage() {
 
       setSelectedTicket((prev) => {
         if (!prev) return prev;
+        console.log(`Adding optimistic message: localId=${localId}, text="${messageText}"`);
         return {
           ...prev,
           messages: [...prev.messages, optimisticMessage],
         };
       });
       setReplyMessage("");
-      inputValueRef.current = "";
       if (inputRef.current) inputRef.current.value = "";
       setSelectedFile(null);
       scrollToBottom();
@@ -362,7 +372,7 @@ export default function HelpAndSupportPage() {
         if (selectedFile) {
           const formData = new FormData();
           formData.append("chatId", chatId);
-          formData.append("message", inputValueRef.current);
+          formData.append("message", messageText);
           formData.append("file", selectedFile);
           requestOptions.body = formData;
         } else {
@@ -372,7 +382,7 @@ export default function HelpAndSupportPage() {
           };
           requestOptions.body = JSON.stringify({
             chatId,
-            message: inputValueRef.current,
+            message: messageText,
           });
         }
 
@@ -387,6 +397,9 @@ export default function HelpAndSupportPage() {
             `HTTP error! Status: ${response.status}, Details: ${errorText}`
           );
         }
+
+        const responseData = await response.json();
+        console.log("Reply API response:", responseData);
 
         setSelectedTicket((prev) => {
           if (!prev) return prev;
@@ -424,7 +437,7 @@ export default function HelpAndSupportPage() {
         });
       }
     },
-    [selectedFile, fetchTicketDetails]
+    [selectedFile, replyMessage, fetchTicketDetails]
   );
 
   const handleSupportAction = async (chatId: string, action: "refund" | "rebook" | "escalate" | "close") => {
@@ -484,14 +497,6 @@ export default function HelpAndSupportPage() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    inputValueRef.current = e.target.value;
-  };
-
-  const handleInputBlur = () => {
-    setReplyMessage(inputValueRef.current);
-  };
-
   useEffect(() => {
     fetchSupportTickets();
   }, [fetchSupportTickets]);
@@ -547,29 +552,29 @@ export default function HelpAndSupportPage() {
   const supportActions = useMemo(() => {
     if (!selectedTicket?.escalated) return null;
     return (
-      <div className="p-3 bg-red-50/80 border-b border-red-200/50">
-        <div className="flex flex-wrap gap-2">
+      <div className="p-2 sm:p-3 bg-red-50/80 border-b border-red-200/50">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button
             onClick={() => handleSupportAction(selectedTicket._id, "refund")}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded-md"
+            className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-3 py-1 rounded-md"
           >
             Refund
           </Button>
           <Button
             onClick={() => handleSupportAction(selectedTicket._id, "rebook")}
-            className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded-md"
+            className="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-1 rounded-md"
           >
             Rebook
           </Button>
           <Button
             onClick={() => handleSupportAction(selectedTicket._id, "escalate")}
-            className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-2 py-1 rounded-md"
+            className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-1 rounded-md"
           >
             Escalate
           </Button>
           <Button
             onClick={() => handleSupportAction(selectedTicket._id, "close")}
-            className="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded-md"
+            className="bg-gray-500 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded-md"
           >
             Close
           </Button>
@@ -612,29 +617,38 @@ export default function HelpAndSupportPage() {
         .chat-bubble:hover {
           transform: translateY(-2px);
         }
+        .ticket-card {
+          transition: background-color 0.2s ease;
+        }
+        .ticket-card:hover {
+          background-color: rgba(255, 255, 255, 0.7);
+        }
       `}</style>
 
-      <Sidebar />
+      <Sidebar className="hidden md:block" />
 
-      <div className="flex-1 p-4 md:p-6 lg:p-8 md:ml-[240px]">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Support Dashboard</h1>
+      <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 md:ml-[240px]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Headphones className="h-5 sm:h-6 w-5 sm:w-6 text-gray-800" />
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">HelpDesk</h1>
+          </div>
           <AdminProfile />
         </div>
 
         {selectedTicket ? (
-          <div className="glass rounded-xl shadow-lg h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] flex flex-col">
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-xl">
-              <div className="flex items-center gap-3">
+          <div className="glass rounded-xl shadow-lg h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] flex flex-col">
+            <div className="flex items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-xl">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setSelectedTicket(null)}
                   className="text-white hover:bg-white/20"
                 >
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft className="h-4 sm:h-5 w-4 sm:w-5" />
                 </Button>
-                <h2 className="text-lg md:text-xl font-semibold truncate max-w-[200px]">
+                <h2 className="text-base sm:text-lg md:text-xl font-semibold truncate max-w-[150px] sm:max-w-[200px]">
                   Ticket #{selectedTicket.intercomTicketId || "N/A"}
                 </h2>
                 {selectedTicket.escalated && (
@@ -646,7 +660,7 @@ export default function HelpAndSupportPage() {
               </div>
               <Button
                 onClick={() => setSelectedTicket(null)}
-                className="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1 rounded-lg hover-scale"
+                className="bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg hover-scale"
               >
                 Close
               </Button>
@@ -654,9 +668,9 @@ export default function HelpAndSupportPage() {
 
             {supportActions}
 
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50/80 flex flex-col-reverse">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-50/80 flex flex-col-reverse">
               {selectedTicket.messages.length === 0 ? (
-                <p className="text-gray-500 text-center text-sm mt-auto">
+                <p className="text-gray-500 text-center text-xs sm:text-sm mt-auto">
                   No messages yet. Start the conversation!
                 </p>
               ) : (
@@ -680,26 +694,25 @@ export default function HelpAndSupportPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 bg-white/80 glass rounded-b-xl shadow-lg">
+            <div className="p-3 sm:p-4 bg-white/80 glass rounded-b-xl shadow-lg">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <textarea
                     ref={inputRef}
-                    className="flex-1 p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none bg-white/90 shadow-sm"
+                    className="flex-1 p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm resize-none bg-white/90 shadow-sm"
                     placeholder="Type your reply..."
-                    defaultValue={replyMessage}
-                    onChange={handleInputChange}
-                    onBlur={handleInputBlur}
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
                         handleReply(selectedTicket._id);
                       }
                     }}
-                    rows={2}
+                    rows={1}
                   />
                   <label className="cursor-pointer">
-                    <Paperclip className="h-5 w-5 text-gray-600 hover:text-blue-600" />
+                    <Paperclip className="h-4 sm:h-5 w-4 sm:w-5 text-gray-600 hover:text-blue-600" />
                     <input
                       type="file"
                       className="hidden"
@@ -710,33 +723,33 @@ export default function HelpAndSupportPage() {
                     onClick={() => handleReply(selectedTicket._id)}
                     className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg hover-scale"
                   >
-                    <Send className="h-5 w-5" />
+                    <Send className="h-4 sm:h-5 w-4 sm:w-5" />
                   </Button>
                 </div>
                 {selectedFile && (
-                  <p className="text-xs text-gray-600 truncate">File: {selectedFile.name}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-600 truncate">File: {selectedFile.name}</p>
                 )}
               </div>
             </div>
           </div>
         ) : (
           <div className="flex flex-col">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="relative flex-1 max-w-[300px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="relative flex-1 max-w-[250px] sm:max-w-[300px]">
+                <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 sm:h-5 w-4 sm:w-5 text-gray-400" />
                 <input
                   type="search"
                   placeholder="Search tickets..."
-                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white/90 shadow-sm"
+                  className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1 sm:py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm bg-white/90 shadow-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
 
-            <div className="flex gap-4 mb-6 border-b border-gray-200 pb-2">
+            <div className="flex gap-3 sm:gap-4 mb-4 sm:mb-6 border-b border-gray-200 pb-2">
               <button
-                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                className={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium rounded-t-lg ${
                   activeTab === "unread"
                     ? "bg-blue-500 text-white"
                     : "text-gray-600 hover:bg-gray-200"
@@ -746,7 +759,7 @@ export default function HelpAndSupportPage() {
                 Unread ({unreadTicketsLength})
               </button>
               <button
-                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                className={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium rounded-t-lg ${
                   activeTab === "read"
                     ? "bg-blue-500 text-white"
                     : "text-gray-600 hover:bg-gray-200"
@@ -756,7 +769,7 @@ export default function HelpAndSupportPage() {
                 Read ({readTicketsLength})
               </button>
               <button
-                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                className={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium rounded-t-lg ${
                   activeTab === "escalated"
                     ? "bg-red-500 text-white"
                     : "text-gray-600 hover:bg-gray-200"
@@ -769,7 +782,7 @@ export default function HelpAndSupportPage() {
 
             <div className="glass rounded-xl shadow-lg overflow-hidden">
               {isLoading ? (
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   {[...Array(5)].map((_, i) => (
                     <div key={i} className="mb-4 flex flex-col gap-2 slide-in" style={{ animationDelay: `${i * 0.1}s` }}>
                       <div className="h-4 bg-gray-200/50 rounded w-1/3"></div>
@@ -779,18 +792,18 @@ export default function HelpAndSupportPage() {
                   ))}
                 </div>
               ) : error ? (
-                <div className="text-center p-6 text-red-600">
-                  <p className="mb-4 text-sm">{error}</p>
+                <div className="text-center p-4 sm:p-6 text-red-600">
+                  <p className="mb-4 text-xs sm:text-sm">{error}</p>
                   <Button
                     onClick={fetchSupportTickets}
-                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover-scale"
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm px-3 sm:px-4 py-1 sm:py-2 rounded-lg hover-scale"
                   >
                     Retry
                   </Button>
                 </div>
               ) : filteredTickets.length === 0 ? (
-                <div className="text-center p-6 text-gray-600">
-                  <p className="text-sm">
+                <div className="text-center p-4 sm:p-6 text-gray-600">
+                  <p className="text-xs sm:text-sm">
                     {activeTab === "escalated"
                       ? "No escalated tickets."
                       : "No tickets found."}
@@ -813,14 +826,14 @@ export default function HelpAndSupportPage() {
                         {paginatedTickets.map((ticket, index) => (
                           <tr
                             key={ticket._id}
-                            className={`hover:bg-white/50 cursor-pointer slide-in ${
+                            className={`hover:bg-white/70 cursor-pointer slide-in transition-colors ${
                               ticket.escalated ? "border-l-4 border-red-500" : ""
                             } ${isRecentTicket(ticket.updatedAt) ? "bg-blue-50/50" : ""}`}
                             style={{ animationDelay: `${index * 0.1}s` }}
                             onClick={() => handleViewDetails(ticket)}
                           >
                             <td className="py-3 px-4 text-sm text-gray-800">{ticket.intercomTicketId || "N/A"}</td>
-                            <td className="py-3 px-4 text-sm text-gray-800 truncate max-w-[200px]">
+                            <td className="py-3 px-4 text-sm text-gray-800 truncate max-w-[250px]">
                               {ticket.messages.length > 0
                                 ? ticket.messages[ticket.messages.length - 1].text || "No content"
                                 : "No messages"}
@@ -862,29 +875,22 @@ export default function HelpAndSupportPage() {
                     </table>
                   </div>
 
-                  <div className="md:hidden divide-y divide-gray-200/50">
+                  <div className="md:hidden">
                     {paginatedTickets.map((ticket, index) => (
                       <div
                         key={ticket._id}
-                        className={`p-4 hover:bg-white/50 cursor-pointer slide-in ${
+                        className={`p-3 mb-2 ticket-card cursor-pointer slide-in shadow-sm bg-white/80 rounded-md flex justify-between items-center ${
                           ticket.escalated ? "border-l-4 border-red-500" : ""
                         } ${isRecentTicket(ticket.updatedAt) ? "bg-blue-50/50" : ""}`}
                         style={{ animationDelay: `${index * 0.1}s` }}
                         onClick={() => handleViewDetails(ticket)}
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="max-w-[70%]">
-                            <p className="text-sm font-medium text-gray-800 truncate">
-                              Ticket #{ticket.intercomTicketId || "N/A"}
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1 truncate">
-                              {ticket.messages.length > 0
-                                ? ticket.messages[ticket.messages.length - 1].text || "No content"
-                                : "No messages"}
-                            </p>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-gray-800 truncate max-w-[120px]">
+                            #{ticket.intercomTicketId || "N/A"}
+                          </p>
                           <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                               ticket.escalated
                                 ? "bg-red-100 text-red-700 pulse"
                                 : ticket.readStatus
@@ -895,16 +901,15 @@ export default function HelpAndSupportPage() {
                             {ticket.escalated ? "Escalated" : ticket.readStatus ? "Read" : "Unread"}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center mt-2">
-                          <p className="text-xs text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[10px] text-gray-500">
                             {new Date(ticket.updatedAt).toLocaleDateString("en-US", {
                               month: "2-digit",
                               day: "2-digit",
-                              year: "numeric",
                             })}
                           </p>
                           <button
-                            className="text-blue-600 text-xs hover:underline hover-scale"
+                            className="text-blue-600 text-xs font-medium hover:underline px-2 py-1 rounded-md hover:bg-blue-50"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleViewDetails(ticket);
@@ -917,12 +922,12 @@ export default function HelpAndSupportPage() {
                     ))}
                   </div>
 
-                  <div className="p-4 border-t border-gray-200/50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/80">
-                    <div className="flex items-center gap-4">
+                  <div className="p-3 sm:p-4 border-t border-gray-200/50 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 bg-white/80">
+                    <div className="flex items-center gap-3 sm:gap-4">
                       <span className="text-xs text-gray-700">
                         Rows:
                         <select
-                          className="border rounded-lg px-2 py-1 ml-2 text-xs bg-white/90"
+                          className="border rounded-lg px-1 sm:px-2 py-1 ml-1 sm:ml-2 text-xs bg-white/90"
                           value={rowsPerPage}
                           onChange={(e) => {
                             setRowsPerPage(Number(e.target.value));
@@ -942,14 +947,14 @@ export default function HelpAndSupportPage() {
                     </div>
                     <div className="flex gap-2">
                       <Button
-                        className="px-3 py-1 text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 hover-scale"
+                        className="px-2 sm:px-3 py-1 text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 hover-scale"
                         onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                         disabled={currentPage === 1}
                       >
                         Previous
                       </Button>
                       <Button
-                        className="px-3 py-1 text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 hover-scale"
+                        className="px-2 sm:px-3 py-1 text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 hover-scale"
                         onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                         disabled={currentPage === totalPages}
                       >
