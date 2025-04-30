@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { Loader2, Search, ArrowLeft, Send, Paperclip, AlertTriangle } from "lucide-react";
+import { Loader2, Search, ArrowLeft, Send, Paperclip, AlertTriangle, Check, CheckCheck, Clock } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import AdminProfile from "@/components/adminProfile";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ interface SupportMessage {
   fileType: string;
   timestamp: string;
   _id: string;
+  status?: "pending" | "sent" | "delivered";
+  localId?: string;
 }
 
 interface SupportTicket {
@@ -32,6 +34,102 @@ interface SupportTicket {
   __v?: number;
 }
 
+const MessageItem = React.memo(
+  ({ message, isSender, index }: { message: SupportMessage; isSender: boolean; index: number }) => {
+    return (
+      <div
+        key={message._id || message.localId}
+        className={`flex mb-3 ${isSender ? "justify-start" : "justify-end"} ${index === 0 ? "slide-in" : ""}`}
+        style={{ animationDelay: `${index * 0.05}s` }}
+      >
+        <div className={`flex items-end gap-2 max-w-[75%] chat-bubble ${isSender ? "flex-row" : "flex-row-reverse"}`}>
+          <div
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium shadow-sm ${
+              isSender
+                ? "bg-gray-600"
+                : message.senderType === "bot"
+                ? "bg-green-500"
+                : message.senderType === "admin"
+                ? "bg-blue-600"
+                : "bg-indigo-600"
+            }`}
+          >
+            {isSender
+              ? "C"
+              : message.senderType === "bot"
+              ? "B"
+              : message.senderType === "admin"
+              ? "A"
+              : "S"}
+          </div>
+          <div
+            className={`p-3 rounded-lg shadow-sm text-sm ${
+              isSender
+                ? "bg-white text-gray-800 rounded-bl-none"
+                : "bg-blue-100 text-gray-800 rounded-br-none"
+            }`}
+          >
+            <p className="leading-relaxed">{message.text || "No content"}</p>
+            {message.fileUrl && (
+              <div className="mt-2">
+                {message.fileType === "image" ? (
+                  <img
+                    src={message.fileUrl}
+                    alt="Attachment"
+                    className="max-w-[120px] rounded-md"
+                  />
+                ) : (
+                  <a
+                    href={message.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs underline text-blue-600 hover:text-blue-800"
+                  >
+                    Download
+                  </a>
+                )}
+              </div>
+            )}
+            <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
+              <span>
+                {new Date(message.timestamp).toLocaleString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </span>
+              {!isSender && (
+                <div className="flex items-center">
+                  {message.status === "pending" && (
+                    <Clock className="h-3 w-3 text-gray-400" />
+                  )}
+                  {message.status === "sent" && (
+                    <Check className="h-3 w-3 text-gray-400" />
+                  )}
+                  {message.status === "delivered" && (
+                    <CheckCheck className="h-3 w-3 text-blue-500" />
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.message._id === nextProps.message._id &&
+      prevProps.message.localId === nextProps.message.localId &&
+      prevProps.message.status === nextProps.message.status &&
+      prevProps.message.text === nextProps.message.text &&
+      prevProps.message.fileUrl === nextProps.message.fileUrl &&
+      prevProps.isSender === nextProps.isSender &&
+      prevProps.index === nextProps.index
+    );
+  }
+);
+
 export default function HelpAndSupportPage() {
   const [activeTab, setActiveTab] = useState<"unread" | "read" | "escalated">("unread");
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,6 +142,8 @@ export default function HelpAndSupportPage() {
   const [replyMessage, setReplyMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputValueRef = useRef<string>("");
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -93,6 +193,7 @@ export default function HelpAndSupportPage() {
               `Null or undefined text in ticket ${ticket.intercomTicketId || "N/A"}, message ${msgIndex}`
             );
           }
+          msg.status = "delivered";
         });
       });
 
@@ -177,6 +278,10 @@ export default function HelpAndSupportPage() {
         throw new Error("Invalid ticket details response");
       }
 
+      data.data.messages.forEach((msg: SupportMessage) => {
+        msg.status = "delivered";
+      });
+
       if (!data.data.readStatus) {
         await markAsRead(chatId);
       }
@@ -195,87 +300,139 @@ export default function HelpAndSupportPage() {
     }
   };
 
-  const handleReply = async (chatId: string) => {
-    if (!replyMessage.trim() && !selectedFile) {
-      toast({
-        title: "Error",
-        description: "Message or file attachment is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No authentication token found");
-
-      let response;
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append("chatId", chatId);
-        formData.append("message", replyMessage);
-        formData.append("file", selectedFile);
-
-        response = await fetch(
-          "https://limpiar-backend.onrender.com/api/chats/support/reply",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            body: formData,
-          }
-        );
-      } else {
-        response = await fetch(
-          "https://limpiar-backend.onrender.com/api/chats/support/reply",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              chatId,
-              message: replyMessage,
-            }),
-          }
-        );
+  const handleReply = useCallback(
+    async (chatId: string) => {
+      if (!inputValueRef.current.trim() && !selectedFile) {
+        toast({
+          title: "Error",
+          description: "Message or file attachment is required",
+          variant: "destructive",
+        });
+        return;
       }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP error! Status: ${response.status}, Details: ${errorText}`
-        );
-      }
+      const localId = `local-${Date.now()}-${Math.random()}`;
+      const optimisticMessage: SupportMessage = {
+        senderId: "admin",
+        senderType: "admin",
+        text: inputValueRef.current || null,
+        fileUrl: selectedFile ? URL.createObjectURL(selectedFile) : null,
+        fileType: selectedFile ? (selectedFile.type.startsWith("image") ? "image" : "file") : "",
+        timestamp: new Date().toISOString(),
+        _id: localId,
+        localId,
+        status: "pending",
+      };
 
-      toast({
-        title: "Success",
-        description: "Reply sent successfully",
+      setSelectedTicket((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: [...prev.messages, optimisticMessage],
+        };
       });
-
-      await fetchTicketDetails(chatId);
       setReplyMessage("");
+      inputValueRef.current = "";
+      if (inputRef.current) inputRef.current.value = "";
       setSelectedFile(null);
-    } catch (error) {
-      console.error("Error sending reply:", error);
-      toast({
-        title: "Error",
-        description: `Failed to send reply: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-        variant: "destructive",
-      });
-    }
-  };
+      scrollToBottom();
+
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("No authentication token found");
+
+        setSelectedTicket((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.map((msg) =>
+              msg.localId === localId ? { ...msg, status: "sent" } : msg
+            ),
+          };
+        });
+
+        const requestOptions: RequestInit = {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        };
+
+        let response;
+        if (selectedFile) {
+          const formData = new FormData();
+          formData.append("chatId", chatId);
+          formData.append("message", inputValueRef.current);
+          formData.append("file", selectedFile);
+          requestOptions.body = formData;
+        } else {
+          requestOptions.headers = {
+            ...requestOptions.headers,
+            "Content-Type": "application/json",
+          };
+          requestOptions.body = JSON.stringify({
+            chatId,
+            message: inputValueRef.current,
+          });
+        }
+
+        response = await fetch(
+          "https://limpiar-backend.onrender.com/api/chats/support/reply",
+          requestOptions
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `HTTP error! Status: ${response.status}, Details: ${errorText}`
+          );
+        }
+
+        setSelectedTicket((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.map((msg) =>
+              msg.localId === localId ? { ...msg, status: "delivered" } : msg
+            ),
+          };
+        });
+
+        toast({
+          title: "Success",
+          description: "Reply sent successfully",
+        });
+
+        await fetchTicketDetails(chatId);
+      } catch (error) {
+        console.error("Error sending reply:", error);
+        setSelectedTicket((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.map((msg) =>
+              msg.localId === localId ? { ...msg, status: "pending" } : msg
+            ),
+          };
+        });
+        toast({
+          title: "Error",
+          description: `Failed to send reply: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+          variant: "destructive",
+        });
+      }
+    },
+    [selectedFile, fetchTicketDetails]
+  );
 
   const handleSupportAction = async (chatId: string, action: "refund" | "rebook" | "escalate" | "close") => {
     const actionMessages = {
-      refund: `Are you sure you want to issue a refund for Ticket #${selectedTicket?.intercomTicketId || "N/A"}? This action cannot be undone.`,
+      refund: `Are you sure you want to issue a refund for Ticket #${selectedTicket?.intercomTicketId || "N/A"}?`,
       rebook: `Do you want to schedule a new service for Ticket #${selectedTicket?.intercomTicketId || "N/A"}?`,
-      escalate: `Are you sure you want to escalate Ticket #${selectedTicket?.intercomTicketId || "N/A"} to a higher support level?`,
-      close: `Are you sure you want to close Ticket #${selectedTicket?.intercomTicketId || "N/A"}? This will mark it as resolved.`,
+      escalate: `Are you sure you want to escalate Ticket #${selectedTicket?.intercomTicketId || "N/A"}?`,
+      close: `Are you sure you want to close Ticket #${selectedTicket?.intercomTicketId || "N/A"}?`,
     };
 
     if (!window.confirm(actionMessages[action])) {
@@ -304,7 +461,7 @@ export default function HelpAndSupportPage() {
 
       toast({
         title: "Success",
-        description: `${action.charAt(0).toUpperCase() + action.slice(1)} action completed successfully`,
+        description: `${action.charAt(0).toUpperCase() + action.slice(1)} action completed`,
       });
 
       await fetchTicketDetails(chatId);
@@ -327,6 +484,14 @@ export default function HelpAndSupportPage() {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    inputValueRef.current = e.target.value;
+  };
+
+  const handleInputBlur = () => {
+    setReplyMessage(inputValueRef.current);
+  };
+
   useEffect(() => {
     fetchSupportTickets();
   }, [fetchSupportTickets]);
@@ -341,24 +506,26 @@ export default function HelpAndSupportPage() {
     (ticket) => ticket.escalated
   ).length;
 
-  const filteredTickets = supportTickets
-    .filter((ticket) => {
-      const searchLower = searchQuery.toLowerCase();
-      const lastMessage =
-        ticket.messages.length > 0
-          ? (ticket.messages[ticket.messages.length - 1].text || "").toLowerCase()
-          : "";
-      return (
-        (ticket.intercomTicketId || "").toLowerCase().includes(searchLower) ||
-        lastMessage.includes(searchLower)
-      );
-    })
-    .filter((ticket) => {
-      if (activeTab === "escalated") return ticket.escalated;
-      if (activeTab === "unread") return !ticket.readStatus && !ticket.escalated;
-      return ticket.readStatus && !ticket.escalated;
-    })
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const filteredTickets = useMemo(() => {
+    return supportTickets
+      .filter((ticket) => {
+        const searchLower = searchQuery.toLowerCase();
+        const lastMessage =
+          ticket.messages.length > 0
+            ? (ticket.messages[ticket.messages.length - 1].text || "").toLowerCase()
+            : "";
+        return (
+          (ticket.intercomTicketId || "").toLowerCase().includes(searchLower) ||
+          lastMessage.includes(searchLower)
+        );
+      })
+      .filter((ticket) => {
+        if (activeTab === "escalated") return ticket.escalated;
+        if (activeTab === "unread") return !ticket.readStatus && !ticket.escalated;
+        return ticket.readStatus && !ticket.escalated;
+      })
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [supportTickets, searchQuery, activeTab]);
 
   const totalPages = Math.ceil(filteredTickets.length / rowsPerPage);
   const paginatedTickets = filteredTickets.slice(
@@ -377,141 +544,120 @@ export default function HelpAndSupportPage() {
     await fetchTicketDetails(ticket._id);
   };
 
+  const supportActions = useMemo(() => {
+    if (!selectedTicket?.escalated) return null;
+    return (
+      <div className="p-3 bg-red-50/80 border-b border-red-200/50">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => handleSupportAction(selectedTicket._id, "refund")}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded-md"
+          >
+            Refund
+          </Button>
+          <Button
+            onClick={() => handleSupportAction(selectedTicket._id, "rebook")}
+            className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded-md"
+          >
+            Rebook
+          </Button>
+          <Button
+            onClick={() => handleSupportAction(selectedTicket._id, "escalate")}
+            className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-2 py-1 rounded-md"
+          >
+            Escalate
+          </Button>
+          <Button
+            onClick={() => handleSupportAction(selectedTicket._id, "close")}
+            className="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded-md"
+          >
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  }, [selectedTicket, handleSupportAction]);
+
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 to-gray-100">
+    <div className="flex min-h-screen bg-gray-100">
       <style jsx>{`
-        @keyframes blink {
-          0% {
-            background-color: rgba(220, 38, 38, 0.8);
-            border-color: rgba(220, 38, 38, 0.8);
-          }
-          50% {
-            background-color: rgba(220, 38, 38, 0.4);
-            border-color: rgba(220, 38, 38, 0.4);
-          }
-          100% {
-            background-color: rgba(220, 38, 38, 0.8);
-            border-color: rgba(220, 38, 38, 0.8);
-          }
-        }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
         @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateX(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .blink {
-          animation: blink 1.5s infinite;
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
         }
-        .fade-in {
-          animation: fadeIn 0.3s ease-out;
+        .glass {
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
         }
         .slide-in {
-          animation: slideIn 0.5s ease-out;
+          animation: slideIn 0.3s ease-out;
         }
-        .touch-scale {
+        .pulse {
+          animation: pulse 1.5s infinite;
+        }
+        .hover-scale {
           transition: transform 0.2s ease;
         }
-        .touch-scale:active {
-          transform: scale(0.95);
+        .hover-scale:hover {
+          transform: scale(1.05);
+        }
+        .chat-bubble {
+          transition: all 0.2s ease;
+        }
+        .chat-bubble:hover {
+          transform: translateY(-2px);
         }
       `}</style>
 
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main Content */}
-      <div className="flex-1 pt-16 md:pt-0 p-4 sm:p-6 lg:p-8 md:ml-[240px]">
-        {/* Header */}
+      <div className="flex-1 p-4 md:p-6 lg:p-8 md:ml-[240px]">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-navy-800 tracking-tight">
-            Customer Support Hub
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Support Dashboard</h1>
           <AdminProfile />
         </div>
 
         {selectedTicket ? (
-          // Full-Screen Chat View
-          <div className="flex flex-col h-[calc(100vh-120px)] sm:h-[calc(100vh-140px)] bg-white rounded-2xl shadow-xl">
-            {/* Chat Header */}
-            <div className="flex items-center justify-between p-4 bg-navy-800 text-white rounded-t-2xl">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button
+          <div className="glass rounded-xl shadow-lg h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] flex flex-col">
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setSelectedTicket(null)}
-                  className="text-white hover:text-gray-200 transition-colors touch-scale"
+                  className="text-white hover:bg-white/20"
                 >
-                  <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
-                </button>
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold truncate max-w-[150px] sm:max-w-[200px]">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <h2 className="text-lg md:text-xl font-semibold truncate max-w-[200px]">
                   Ticket #{selectedTicket.intercomTicketId || "N/A"}
                 </h2>
                 {selectedTicket.escalated && (
-                  <span className="flex items-center gap-1 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded-full blink">
-                    <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="flex items-center gap-1 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded-full pulse">
+                    <AlertTriangle className="h-3 w-3" />
                     Escalated
                   </span>
                 )}
               </div>
               <Button
                 onClick={() => setSelectedTicket(null)}
-                className="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-2 rounded-lg touch-scale"
+                className="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1 rounded-lg hover-scale"
               >
                 Close
               </Button>
             </div>
 
-            {/* Support Actions for Escalated Tickets */}
-            {selectedTicket.escalated && (
-              <div className="p-4 bg-red-50 border-b border-red-200">
-                <h3 className="text-base sm:text-lg font-semibold text-red-800 mb-3">Support Actions</h3>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={() => handleSupportAction(selectedTicket._id, "refund")}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-3 py-2 rounded-lg touch-scale"
-                  >
-                    Issue Refund
-                  </Button>
-                  <Button
-                    onClick={() => handleSupportAction(selectedTicket._id, "rebook")}
-                    className="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-2 rounded-lg touch-scale"
-                  >
-                    Rebook Service
-                  </Button>
-                  <Button
-                    onClick={() => handleSupportAction(selectedTicket._id, "escalate")}
-                    className="bg-orange-500 hover:bg-orange-600 text-white text-sm px-3 py-2 rounded-lg touch-scale"
-                  >
-                    Escalate Further
-                  </Button>
-                  <Button
-                    onClick={() => handleSupportAction(selectedTicket._id, "close")}
-                    className="bg-gray-500 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded-lg touch-scale"
-                  >
-                    Close Ticket
-                  </Button>
-                </div>
-              </div>
-            )}
+            {supportActions}
 
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50 flex flex-col-reverse">
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-50/80 flex flex-col-reverse">
               {selectedTicket.messages.length === 0 ? (
-                <p className="text-gray-600 text-center text-sm sm:text-base mt-auto">
-                  We're here to help! No messages in this ticket yet.
+                <p className="text-gray-500 text-center text-sm mt-auto">
+                  No messages yet. Start the conversation!
                 </p>
               ) : (
                 [...selectedTicket.messages]
@@ -522,99 +668,38 @@ export default function HelpAndSupportPage() {
                       message.senderType !== "bot" &&
                       message.senderType !== "admin";
                     return (
-                      <div
-                        key={message._id}
-                        className={`flex mb-4 ${
-                          isSender ? "justify-start" : "justify-end"
-                        } fade-in`}
-                        style={{ animationDelay: `${index * 0.1}s` }}
-                      >
-                        <div className="flex items-start gap-2 sm:gap-3 max-w-[85%] sm:max-w-[70%]">
-                          <div
-                            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white text-sm sm:text-base font-bold shadow-md ${
-                              isSender
-                                ? "bg-gradient-to-br from-gray-600 to-gray-800"
-                                : message.senderType === "bot"
-                                ? "bg-gradient-to-br from-green-500 to-green-700"
-                                : message.senderType === "admin"
-                                ? "bg-gradient-to-br from-navy-600 to-navy-800"
-                                : "bg-gradient-to-br from-blue-500 to-blue-700"
-                            }`}
-                          >
-                            {isSender
-                              ? "C"
-                              : message.senderType === "bot"
-                              ? "B"
-                              : message.senderType === "admin"
-                              ? "A"
-                              : "S"}
-                          </div>
-                          <div
-                            className={`p-3 sm:p-4 rounded-xl shadow-lg ${
-                              isSender
-                                ? "bg-gradient-to-br from-gray-200 to-gray-300 text-gray-800 rounded-br-none"
-                                : message.senderType === "bot"
-                                ? "bg-gradient-to-br from-green-100 to-green-200 text-gray-800 rounded-bl-none"
-                                : message.senderType === "admin"
-                                ? "bg-gradient-to-br from-navy-100 to-navy-200 text-gray-800 rounded-bl-none"
-                                : "bg-gradient-to-br from-blue-100 to-blue-200 text-gray-800 rounded-bl-none"
-                            }`}
-                          >
-                            <p className="text-sm sm:text-base leading-relaxed">
-                              {message.text || "No content"}
-                            </p>
-                            {message.fileUrl && (
-                              <div className="mt-2">
-                                {message.fileType === "image" ? (
-                                  <img
-                                    src={message.fileUrl}
-                                    alt="Attachment"
-                                    className="max-w-[150px] sm:max-w-[200px] rounded-lg shadow-sm"
-                                  />
-                                ) : (
-                                  <a
-                                    href={message.fileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs sm:text-sm underline text-blue-600 hover:text-blue-800"
-                                  >
-                                    Download Attachment
-                                  </a>
-                                )}
-                              </div>
-                            )}
-                            <p className="text-xs text-gray-500 mt-2 font-medium">
-                              {new Date(message.timestamp).toLocaleString("en-US", {
-                                month: "2-digit",
-                                day: "2-digit",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                      <MessageItem
+                        key={message._id || message.localId}
+                        message={message}
+                        isSender={isSender}
+                        index={index}
+                      />
                     );
                   })
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Reply Input */}
-            <div className="p-4 bg-white border-t border-gray-200">
+            <div className="p-4 bg-white/80 glass rounded-b-xl shadow-lg">
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-2">
                   <textarea
-                    className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-navy-600 min-h-[80px] text-sm sm:text-base resize-none shadow-sm"
+                    ref={inputRef}
+                    className="flex-1 p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none bg-white/90 shadow-sm"
                     placeholder="Type your reply..."
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                    rows={3}
+                    defaultValue={replyMessage}
+                    onChange={handleInputChange}
+                    onBlur={handleInputBlur}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleReply(selectedTicket._id);
+                      }
+                    }}
+                    rows={2}
                   />
                   <label className="cursor-pointer">
-                    <Paperclip className="h-5 w-5 text-gray-600 hover:text-navy-600 transition-colors" />
+                    <Paperclip className="h-5 w-5 text-gray-600 hover:text-blue-600" />
                     <input
                       type="file"
                       className="hidden"
@@ -623,167 +708,152 @@ export default function HelpAndSupportPage() {
                   </label>
                   <Button
                     onClick={() => handleReply(selectedTicket._id)}
-                    className="bg-white text-blue-500 hover:bg-blue-50 border border-blue-500 p-2 rounded-lg touch-scale"
+                    className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg hover-scale"
                   >
-                    <Send className="h-6 w-6" />
+                    <Send className="h-5 w-5" />
                   </Button>
                 </div>
                 {selectedFile && (
-                  <p className="text-xs sm:text-sm text-gray-600 mt-2 truncate">
-                    File: {selectedFile.name}
-                  </p>
+                  <p className="text-xs text-gray-600 truncate">File: {selectedFile.name}</p>
                 )}
               </div>
             </div>
           </div>
         ) : (
-          // Ticket List View
           <div className="flex flex-col">
             <div className="flex items-center gap-4 mb-6">
               <div className="relative flex-1 max-w-[300px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   type="search"
-                  placeholder="Search tickets by ID or message..."
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy-600 text-sm sm:text-base shadow-sm transition-all"
+                  placeholder="Search tickets..."
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white/90 shadow-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
 
-            <div className="mb-6 border-b border-gray-200">
-              <nav className="flex space-x-4 sm:space-x-6 overflow-x-auto">
-                <button
-                  className={`py-3 px-2 border-b-2 text-sm sm:text-base font-semibold transition-all whitespace-nowrap ${
-                    activeTab === "unread"
-                      ? "border-navy-600 text-navy-600"
-                      : "border-transparent text-gray-600 hover:text-navy-600 hover:border-navy-300"
-                  }`}
-                  onClick={() => setActiveTab("unread")}
-                >
-                  Unread ({unreadTicketsLength})
-                </button>
-                <button
-                  className={`py-3 px-2 border-b-2 text-sm sm:text-base font-semibold transition-all whitespace-nowrap ${
-                    activeTab === "read"
-                      ? "border-navy-600 text-navy-600"
-                      : "border-transparent text-gray-600 hover:text-navy-600 hover:border-navy-300"
-                  }`}
-                  onClick={() => setActiveTab("read")}
-                >
-                  Read ({readTicketsLength})
-                </button>
-                <button
-                  className={`py-3 px-2 border-b-2 text-sm sm:text-base font-semibold transition-all whitespace-nowrap ${
-                    activeTab === "escalated"
-                      ? "border-red-600 text-red-600"
-                      : "border-transparent text-gray-600 hover:text-red-600 hover:border-red-300"
-                  }`}
-                  onClick={() => setActiveTab("escalated")}
-                >
-                  Escalated ({escalatedTicketsLength})
-                </button>
-              </nav>
+            <div className="flex gap-4 mb-6 border-b border-gray-200 pb-2">
+              <button
+                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                  activeTab === "unread"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-600 hover:bg-gray-200"
+                }`}
+                onClick={() => setActiveTab("unread")}
+              >
+                Unread ({unreadTicketsLength})
+              </button>
+              <button
+                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                  activeTab === "read"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-600 hover:bg-gray-200"
+                }`}
+                onClick={() => setActiveTab("read")}
+              >
+                Read ({readTicketsLength})
+              </button>
+              <button
+                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                  activeTab === "escalated"
+                    ? "bg-red-500 text-white"
+                    : "text-gray-600 hover:bg-gray-200"
+                }`}
+                onClick={() => setActiveTab("escalated")}
+              >
+                Escalated ({escalatedTicketsLength})
+              </button>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xl">
+            <div className="glass rounded-xl shadow-lg overflow-hidden">
               {isLoading ? (
-                <div className="flex justify-center items-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-navy-600" />
-                  <p className="ml-3 text-gray-600 text-sm sm:text-base">
-                    Loading Support Tickets...
-                  </p>
+                <div className="p-6">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="mb-4 flex flex-col gap-2 slide-in" style={{ animationDelay: `${i * 0.1}s` }}>
+                      <div className="h-4 bg-gray-200/50 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200/50 rounded w-2/3"></div>
+                      <div className="h-4 bg-gray-200/50 rounded w-1/4"></div>
+                    </div>
+                  ))}
                 </div>
               ) : error ? (
-                <div className="text-center py-12 text-red-600">
-                  <p className="mb-4 text-sm sm:text-base">{error}</p>
+                <div className="text-center p-6 text-red-600">
+                  <p className="mb-4 text-sm">{error}</p>
                   <Button
                     onClick={fetchSupportTickets}
-                    className="bg-navy-600 hover:bg-navy-700 text-white text-sm sm:text-base px-4 sm:px-6 py-2 rounded-lg touch-scale"
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover-scale"
                   >
                     Retry
                   </Button>
                 </div>
               ) : filteredTickets.length === 0 ? (
-                <div className="text-center py-12 text-gray-600">
-                  <p className="text-sm sm:text-base">
+                <div className="text-center p-6 text-gray-600">
+                  <p className="text-sm">
                     {activeTab === "escalated"
-                      ? "No escalated tickets found."
-                      : "We're here to help! No tickets found for this category."}
+                      ? "No escalated tickets."
+                      : "No tickets found."}
                   </p>
                 </div>
               ) : (
                 <>
-                  {/* Desktop Table */}
-                  <div className="hidden md:block overflow-x-auto">
-                    <table className="min-w-full table-auto border-collapse">
-                      <thead className="bg-navy-50">
+                  <div className="hidden md:block">
+                    <table className="min-w-full divide-y divide-gray-200/50">
+                      <thead className="bg-white/80">
                         <tr>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[120px]">
-                            Ticket ID
-                          </th>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[200px]">
-                            Last Message
-                          </th>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[120px]">
-                            Date
-                          </th>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[100px]">
-                            Status
-                          </th>
-                          <th className="py-4 px-6 text-left text-sm font-semibold text-navy-800 uppercase tracking-wide min-w-[120px]">
-                            Actions
-                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700">Ticket ID</th>
+                          <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700">Last Message</th>
+                          <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700">Date</th>
+                          <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700">Status</th>
+                          <th className="py-3 px-4 text-left text-xs font-semibold text-gray-700">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-gray-200/50">
                         {paginatedTickets.map((ticket, index) => (
                           <tr
                             key={ticket._id}
-                            className={`hover:bg-gray-50 cursor-pointer slide-in ${
-                              ticket.escalated ? "border-l-4 border-red-600 blink" : ""
-                            } ${isRecentTicket(ticket.updatedAt) ? "bg-blue-50" : ""}`}
+                            className={`hover:bg-white/50 cursor-pointer slide-in ${
+                              ticket.escalated ? "border-l-4 border-red-500" : ""
+                            } ${isRecentTicket(ticket.updatedAt) ? "bg-blue-50/50" : ""}`}
                             style={{ animationDelay: `${index * 0.1}s` }}
                             onClick={() => handleViewDetails(ticket)}
                           >
-                            <td className="py-4 px-6 text-sm text-gray-900 font-medium truncate">
-                              {ticket.intercomTicketId || "N/A"}
-                            </td>
-                            <td className="py-4 px-6 text-sm text-gray-900 truncate max-w-[250px]">
+                            <td className="py-3 px-4 text-sm text-gray-800">{ticket.intercomTicketId || "N/A"}</td>
+                            <td className="py-3 px-4 text-sm text-gray-800 truncate max-w-[200px]">
                               {ticket.messages.length > 0
                                 ? ticket.messages[ticket.messages.length - 1].text || "No content"
                                 : "No messages"}
                             </td>
-                            <td className="py-4 px-6 text-sm text-gray-900 font-medium">
+                            <td className="py-3 px-4 text-sm text-gray-800">
                               {new Date(ticket.updatedAt).toLocaleDateString("en-US", {
                                 month: "2-digit",
                                 day: "2-digit",
                                 year: "numeric",
                               })}
                             </td>
-                            <td className="py-4 px-6">
+                            <td className="py-3 px-4">
                               <span
-                                className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                                className={`px-2 py-1 text-xs font-medium rounded-full ${
                                   ticket.escalated
-                                    ? "bg-red-100 text-red-800 blink"
+                                    ? "bg-red-100 text-red-700 pulse"
                                     : ticket.readStatus
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-yellow-100 text-yellow-800"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-yellow-100 text-yellow-700"
                                 }`}
                               >
                                 {ticket.escalated ? "Escalated" : ticket.readStatus ? "Read" : "Unread"}
                               </span>
                             </td>
-                            <td className="py-4 px-6">
+                            <td className="py-3 px-4">
                               <button
-                                className="text-navy-600 text-sm font-medium hover:underline touch-scale"
+                                className="text-blue-600 text-sm hover:underline hover-scale"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleViewDetails(ticket);
                                 }}
                               >
-                                View Details
+                                View
                               </button>
                             </td>
                           </tr>
@@ -792,20 +862,19 @@ export default function HelpAndSupportPage() {
                     </table>
                   </div>
 
-                  {/* Mobile Card List */}
-                  <div className="md:hidden divide-y divide-gray-200">
+                  <div className="md:hidden divide-y divide-gray-200/50">
                     {paginatedTickets.map((ticket, index) => (
                       <div
                         key={ticket._id}
-                        className={`p-4 hover:bg-gray-50 cursor-pointer slide-in ${
-                          ticket.escalated ? "border-l-4 border-red-600 blink" : ""
-                        } ${isRecentTicket(ticket.updatedAt) ? "bg-blue-50" : ""}`}
+                        className={`p-4 hover:bg-white/50 cursor-pointer slide-in ${
+                          ticket.escalated ? "border-l-4 border-red-500" : ""
+                        } ${isRecentTicket(ticket.updatedAt) ? "bg-blue-50/50" : ""}`}
                         style={{ animationDelay: `${index * 0.1}s` }}
                         onClick={() => handleViewDetails(ticket)}
                       >
                         <div className="flex justify-between items-start">
                           <div className="max-w-[70%]">
-                            <p className="text-sm font-semibold text-gray-900 truncate">
+                            <p className="text-sm font-medium text-gray-800 truncate">
                               Ticket #{ticket.intercomTicketId || "N/A"}
                             </p>
                             <p className="text-xs text-gray-600 mt-1 truncate">
@@ -815,19 +884,19 @@ export default function HelpAndSupportPage() {
                             </p>
                           </div>
                           <span
-                            className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${
                               ticket.escalated
-                                ? "bg-red-100 text-red-800 blink"
+                                ? "bg-red-100 text-red-700 pulse"
                                 : ticket.readStatus
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-yellow-100 text-yellow-700"
                             }`}
                           >
                             {ticket.escalated ? "Escalated" : ticket.readStatus ? "Read" : "Unread"}
                           </span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
-                          <p className="text-xs text-gray-500 font-medium">
+                          <p className="text-xs text-gray-500">
                             {new Date(ticket.updatedAt).toLocaleDateString("en-US", {
                               month: "2-digit",
                               day: "2-digit",
@@ -835,7 +904,7 @@ export default function HelpAndSupportPage() {
                             })}
                           </p>
                           <button
-                            className="text-navy-600 text-xs font-medium hover:underline touch-scale"
+                            className="text-blue-600 text-xs hover:underline hover-scale"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleViewDetails(ticket);
@@ -848,13 +917,12 @@ export default function HelpAndSupportPage() {
                     ))}
                   </div>
 
-                  {/* Pagination */}
-                  <div className="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div className="flex items-center space-x-4">
-                      <span className="text-xs sm:text-sm text-gray-700">
-                        Show rows:
+                  <div className="p-4 border-t border-gray-200/50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/80">
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs text-gray-700">
+                        Rows:
                         <select
-                          className="border rounded-lg px-2 sm:px-3 py-1 ml-2 text-xs sm:text-sm bg-white shadow-sm"
+                          className="border rounded-lg px-2 py-1 ml-2 text-xs bg-white/90"
                           value={rowsPerPage}
                           onChange={(e) => {
                             setRowsPerPage(Number(e.target.value));
@@ -868,29 +936,25 @@ export default function HelpAndSupportPage() {
                           ))}
                         </select>
                       </span>
-                      <span className="text-xs sm:text-sm text-gray-700">
+                      <span className="text-xs text-gray-700">
                         Page {currentPage} of {totalPages}
                       </span>
                     </div>
-                    <div className="flex space-x-2">
-                      <button
-                        className="px-3 sm:px-4 py-2 border rounded-lg text-xs sm:text-sm bg-white shadow-sm disabled:opacity-50 touch-scale"
-                        onClick={() =>
-                          setCurrentPage((prev) => Math.max(1, prev - 1))
-                        }
+                    <div className="flex gap-2">
+                      <Button
+                        className="px-3 py-1 text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 hover-scale"
+                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                         disabled={currentPage === 1}
                       >
                         Previous
-                      </button>
-                      <button
-                        className="px-3 sm:px-4 py-2 border rounded-lg text-xs sm:text-sm bg-white shadow-sm disabled:opacity-50 touch-scale"
-                        onClick={() =>
-                          setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                        }
+                      </Button>
+                      <Button
+                        className="px-3 py-1 text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 hover-scale"
+                        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                         disabled={currentPage === totalPages}
                       >
                         Next
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </>
