@@ -49,6 +49,7 @@ export default function UsersPage() {
     "property-manager" | "cleaning-business" | "cleaner"
   >("property-manager");
   const [searchQuery, setSearchQuery] = useState("");
+  const [modalSearchQuery, setModalSearchQuery] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +136,8 @@ export default function UsersPage() {
         throw new Error(`Failed to fetch users: ${response.statusText}`);
       }
       const data = await response.json();
-      const sortedUsers = (data || []).sort(
+      const filteredUsers = data.filter((user: User) => user.role === "property_manager");
+      const sortedUsers = filteredUsers.sort(
         (a: User, b: User) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -256,6 +258,12 @@ export default function UsersPage() {
   const endIndex = startIndex + rowsPerPage;
   const currentItems = filteredUsers?.slice(startIndex, endIndex) || [];
 
+  const filteredModalUsers = modalUsers.filter(
+    (user) =>
+      user.fullName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(modalSearchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <div className="hidden lg:block fixed top-0 left-0 w-[240px] h-screen bg-[#101113] z-10">
@@ -283,9 +291,11 @@ export default function UsersPage() {
                 open={isAddManagerModalOpen}
                 onOpenChange={(open) => {
                   setIsAddManagerModalOpen(open);
-                  if (open) fetchAllUsers();
-                  else {
+                  if (open) {
+                    fetchAllUsers();
+                  } else {
                     setModalUsers([]);
+                    setModalSearchQuery("");
                     setSelectedModalUser(null);
                     setGeneratedCredentials(null);
                     setModalError(null);
@@ -302,6 +312,18 @@ export default function UsersPage() {
                   <DialogHeader>
                     <DialogTitle>Select Property Manager</DialogTitle>
                   </DialogHeader>
+                  <div className="mb-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="search"
+                        placeholder="Search by name or email"
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed] focus:border-transparent"
+                        value={modalSearchQuery}
+                        onChange={(e) => setModalSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  </div>
                   <div className="max-h-[400px] overflow-y-auto">
                     {modalLoading ? (
                       <div className="flex justify-center items-center py-8">
@@ -313,9 +335,9 @@ export default function UsersPage() {
                         <p className="mb-4">{modalError}</p>
                         <Button onClick={fetchAllUsers}>Retry</Button>
                       </div>
-                    ) : modalUsers.length === 0 ? (
+                    ) : filteredModalUsers.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
-                        <p>No users found.</p>
+                        <p>No property managers found.</p>
                       </div>
                     ) : (
                       <table className="w-full border-collapse">
@@ -336,7 +358,7 @@ export default function UsersPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                          {modalUsers.map((user) => (
+                          {filteredModalUsers.map((user) => (
                             <tr
                               key={user._id}
                               className="hover:bg-gray-50 cursor-pointer"
