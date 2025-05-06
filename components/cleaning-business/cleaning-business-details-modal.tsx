@@ -87,6 +87,9 @@ function CleanerDetailsModal({ isOpen, onClose, cleaner, onReopenMainModal }: Cl
     onReopenMainModal();
   };
 
+  // Calculate completed tasks by filtering tasks with status "Done"
+  const completedTasksCount = cleaner?.tasks?.filter((task) => task.status === "Done").length ?? 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
@@ -176,7 +179,7 @@ function CleanerDetailsModal({ isOpen, onClose, cleaner, onReopenMainModal }: Cl
                     </p>
                     <p className="text-base whitespace-normal">
                       <span className="text-sm font-medium text-gray-200">Completed Tasks: </span>
-                      <span className="text-white">{cleaner.completedTasks?.length ?? 0}</span>
+                      <span className="text-white">{completedTasksCount}</span>
                     </p>
                   </div>
                 </div>
@@ -302,8 +305,7 @@ function TaskDetailsModal({
             <h3 className="text-2xl font-bold text-white">Task Details</h3>
             <button
               aria-label="Close task details"
-              className="p-2 rounded-lg bg-slate-7
-00 hover:bg-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-green-400 transition-transform hover:scale-105"
+              className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-green-400 transition-transform hover:scale-105"
               onClick={handleClose}
             >
               <X className="h-6 w-6" />
@@ -688,7 +690,7 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
       toast({
         title: "Error",
         description: friendlyError,
-        variant: error instanceof Error && (err.message.includes("401") || err.message.includes("403")) ? "destructive" : "default",
+        variant: error instanceof Error && (error.message.includes("401") || error.message.includes("403")) ? "destructive" : "default",
       });
     }
   };
