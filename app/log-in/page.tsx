@@ -1,6 +1,10 @@
-"use client"
-import Image from "next/image"
-import { LoginForm } from "@/components/auth/login-form"
+"use client";
+
+import Image from "next/image";
+import { Suspense } from "react";
+import { LoginForm } from "@/components/auth/login-form";
+
+export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
   return (
@@ -9,9 +13,10 @@ export default function LoginPage() {
         <div className="flex justify-center">
           <Image src="/logo.jpg" alt="Limpiar Logo" width={165} height={48} priority />
         </div>
-        <LoginForm />
+        <Suspense fallback={<div>Loading...</div>}>
+          <LoginForm />
+        </Suspense>
       </div>
     </main>
-  )
+  );
 }
-
