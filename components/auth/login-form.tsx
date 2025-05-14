@@ -288,7 +288,7 @@ export function LoginForm() {
               type="button"
               onClick={() => {
                 setIsResetPassword(false);
-                router.push("/login");
+                router.push("/log-in");
               }}
               className="text-[#0082ed] hover:underline"
             >
