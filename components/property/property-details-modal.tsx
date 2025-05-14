@@ -1,5 +1,4 @@
-import { X, Pencil, Trash2 } from "lucide-react"
-import Image from "next/image"
+import { X, Pencil, Trash2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useState, useEffect } from "react"
@@ -88,6 +87,8 @@ export function PropertyDetailsModal({
   const [managerName, setManagerName] = useState<string | null>(null)
   const [managerRole, setManagerRole] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<string>("")
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   useEffect(() => {
     const getManagerDetails = async () => {
@@ -116,6 +117,34 @@ export function PropertyDetailsModal({
     managerRole &&
     ["admin", "cleaner", "cleaning_business"].includes(managerRole.toLowerCase())
 
+  const openGallery = (index: number) => {
+    setCurrentImageIndex(index)
+    setIsGalleryOpen(true)
+  }
+
+  const closeGallery = () => {
+    setIsGalleryOpen(false)
+  }
+
+  const nextImage = () => {
+    if (currentImageIndex < property?.images.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1)
+    }
+  }
+
+  const prevImage = () => {
+    if (currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1)
+    }
+  }
+
+  const downloadImage = (imageUrl: string) => {
+    const a = document.createElement("a")
+    a.href = imageUrl
+    a.download = imageUrl.split("/").pop() || "image"
+    a.click()
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px] max-h-screen overflow-y-auto p-0 scrollbar-hide">
@@ -124,18 +153,16 @@ export function PropertyDetailsModal({
             {property?.status === "pending" ? "Property Request" : "Property Details"}
           </h2>
 
-          {/* Image Section */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            {/* Main Image */}
             <div className="sm:w-3/4 w-full">
               <img
                 src={selectedImage.replace(":id", "")}
                 alt={property?.name}
-                className="w-full h-72 object-cover rounded-lg"
+                className="w-full h-72 object-cover rounded-lg cursor-pointer"
+                onClick={() => openGallery(property?.images.indexOf(selectedImage))}
               />
             </div>
 
-            {/* Thumbnails */}
             <div className="sm:w-1/4 w-full flex sm:flex-col flex-row gap-2 overflow-x-auto sm:overflow-visible">
               {property?.images.map((img, index) => (
                 <img
@@ -239,6 +266,33 @@ export function PropertyDetailsModal({
           )}
         </div>
       </DialogContent>
+
+      {/* Gallery Modal */}
+      <Dialog open={isGalleryOpen} onOpenChange={(open) => !open && closeGallery()}>
+        <DialogContent className="max-w-screen-md mx-auto p-6 bg-black text-white">
+          <div className="flex justify-between items-center">
+            <button onClick={prevImage} className="text-white text-xl">
+              {"<"}
+            </button>
+            <div className="relative">
+              <img
+                src={property?.images[currentImageIndex]?.replace(":id", "")}
+                alt="Gallery Image"
+                className="max-h-[80vh] w-auto object-contain"
+              />
+              <button
+                onClick={() => downloadImage(property?.images[currentImageIndex]?.replace(":id", "") || "")}
+                className="absolute top-4 right-4 text-white bg-gray-800 rounded-full p-2 hover:bg-gray-600"
+              >
+                <Download className="h-6 w-6" />
+              </button>
+            </div>
+            <button onClick={nextImage} className="text-white text-xl">
+              {">"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }
