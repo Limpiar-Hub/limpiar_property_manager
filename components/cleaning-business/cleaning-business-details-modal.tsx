@@ -337,7 +337,7 @@ function TaskDetailsModal({
                     </p>
                     <p className="text-base whitespace-normal">
                       <span className="text-sm font-medium text-gray-200">Booking ID: </span>
-                      <span className="text-white">{task.uuid ?? "N/A"}</span>
+                      <span className="text-white">{bookingId ?? "N/A"}</span>
                     </p>
                     <p className="text-base">
                       <span className="text-sm font-medium text-gray-200">Status: </span>
