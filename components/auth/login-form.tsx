@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -33,8 +31,13 @@ const resetPasswordSchema = z.object({
     ),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
 type LoginFormData = z.infer<typeof loginSchema>;
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 interface DecodedToken {
   userId: string;
@@ -50,7 +53,8 @@ export function LoginForm() {
   const [serverError, setServerError] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(!!searchParams.get("userId"));
-  
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+
   React.useEffect(() => {
     setIsResetPassword(!!searchParams.get("userId"));
   }, [searchParams]);
@@ -68,6 +72,13 @@ export function LoginForm() {
     defaultValues: {
       code: "",
       newPassword: "",
+    },
+  });
+
+  const forgotPasswordForm = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
     },
   });
 
@@ -164,6 +175,7 @@ export function LoginForm() {
       await new Promise(resolve => setTimeout(resolve, 3000));
 
       setIsResetPassword(false);
+      setIsForgotPassword(false);
       router.push("/log-in");
     } catch (error) {
       const errorMessage = axios.isAxiosError(error)
@@ -177,21 +189,25 @@ export function LoginForm() {
     }
   };
 
-  const handleForgotPassword = async () => {
+  const onForgotPasswordSubmit = async (data: ForgotPasswordFormData) => {
     setIsLoading(true);
     setServerError("");
 
     try {
-      const userId = localStorage.getItem(STORAGE_KEYS.USER_ID);
-      if (!userId) {
-        throw new Error("User ID is missing from your session. Please log in first.");
+      const { email } = data;
+      const { data: response } = await api.post("auth/forgot-password", { email });
+
+      if (!response.userId) {
+        throw new Error("User ID not found in response.");
       }
 
-      const { data: response } = await api.post("auth/forgot-password", { userId });
+      localStorage.setItem(STORAGE_KEYS.USER_ID, response.userId);
 
-      alert("Reset Password Request Sent: Please check your email or phone for the reset code.");
+      alert("Reset Password Request Sent: Please check your email for the reset code.");
 
+      setIsForgotPassword(false);
       setIsResetPassword(true);
+      router.push(`/log-in?userId=${response.userId}`);
     } catch (error) {
       const errorMessage = axios.isAxiosError(error)
         ? error.response?.data?.message || "Failed to send forgot password request."
@@ -208,11 +224,16 @@ export function LoginForm() {
     <div className="space-y-6">
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">
-          {isResetPassword ? "Reset Password" : "Sign in"}
+          {isResetPassword ? "Reset Password" : isForgotPassword ? "Forgot Password" : "Sign in"}
         </h1>
         {isResetPassword && (
           <p className="text-sm text-muted-foreground">
             Enter the reset code sent to you and your new password.
+          </p>
+        )}
+        {isForgotPassword && (
+          <p className="text-sm text-muted-foreground">
+            Enter your email address to receive a password reset code.
           </p>
         )}
       </div>
@@ -288,6 +309,51 @@ export function LoginForm() {
               type="button"
               onClick={() => {
                 setIsResetPassword(false);
+                setIsForgotPassword(false);
+                router.push("/log-in");
+              }}
+              className="text-[#0082ed] hover:underline"
+            >
+              Back to Sign in
+            </button>
+          </div>
+        </form>
+      ) : isForgotPassword ? (
+        <form onSubmit={forgotPasswordForm.handleSubmit(onForgotPasswordSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="forgotEmail">Email</Label>
+            <Input
+              id="forgotEmail"
+              placeholder="hello@example.com"
+              type="email"
+              className={`w-full p-3 border ${
+                forgotPasswordForm.formState.errors.email ? "border-red-500" : "border-gray-200"
+              } rounded-md focus:outline-none focus:ring-2 focus:ring-[#2e7eea] focus:border-transparent`}
+              {...forgotPasswordForm.register("email")}
+            />
+            {forgotPasswordForm.formState.errors.email && (
+              <p className="text-red-500 text-sm mt-1">{forgotPasswordForm.formState.errors.email.message}</p>
+            )}
+          </div>
+          <Button
+            type="submit"
+            className="w-full bg-[#0082ed] hover:bg-[#0082ed]/90"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending Reset Code...
+              </>
+            ) : (
+              "Send Reset Code"
+            )}
+          </Button>
+          <div className="text-center text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setIsForgotPassword(false);
                 router.push("/log-in");
               }}
               className="text-[#0082ed] hover:underline"
@@ -359,7 +425,7 @@ export function LoginForm() {
             </div>
             <button
               type="button"
-              onClick={handleForgotPassword}
+              onClick={() => setIsForgotPassword(true)}
               className="text-sm text-[#0082ed] hover:underline"
               disabled={isLoading}
             >
