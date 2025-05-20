@@ -26,6 +26,7 @@ interface Transaction {
   createdAt: string;
   updatedAt: string;
   description: string;
+  transactionCategory: string;
 }
 
 interface Refund {
@@ -379,7 +380,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             <Detail label="Type" value={transaction.type} capitalize />
             <Detail
               label="Category"
-              value={transaction.transactionCategory}
+              value={transaction.transactionCategory || "N/A"}
               capitalize
             />
             <Detail label="Timestamp" value={formatDate(transaction.timestamp)} />
@@ -387,24 +388,24 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             <Detail label="To" value={toUser.fullName} />
 
             {receipt && (
-            <>
-            <hr />
-            <h3 className="text-lg font-semibold">Receipt</h3>
-            <Detail label="Receipt ID" value={receipt.receiptId} />
-            <Detail label="Date" value={formatDate(receipt.date)} />
-            <Detail label="Amount" value={formatAmount(receipt.amount)} />
-            <Detail label="Status" value={receipt.status} capitalize />
-            <Detail label="From" value={receipt.fromFullName} />
-            <Detail label="To" value={receipt.toFullName} />
-            <Detail
-              label="Description"
-              value={
-                receipt.description?.trim()
-                  ? receipt.description
-                  : `Wallet transfer of ${formatAmount(receipt.amount)}`
-              }
-            />
-          </>
+              <>
+                <hr />
+                <h3 className="text-lg font-semibold">Receipt</h3>
+                <Detail label="Receipt ID" value={receipt.receiptId} />
+                <Detail label="Date" value={formatDate(receipt.date)} />
+                <Detail label="Amount" value={formatAmount(receipt.amount)} />
+                <Detail label="Status" value={receipt.status} capitalize />
+                <Detail label="From" value={receipt.fromFullName} />
+                <Detail label="To" value={receipt.toFullName} />
+                <Detail
+                  label="Description"
+                  value={
+                    receipt.description?.trim()
+                      ? receipt.description
+                      : `Wallet transfer of ${formatAmount(receipt.amount)}`
+                  }
+                />
+              </>
             )}
 
             {pdfDataUrl && (
@@ -450,6 +451,11 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             <Detail label="Status" value={data.status} capitalize />
             <Detail label="User" value={data.userId?.fullName || "N/A"} />
             <Detail label="Currency" value={data.currency.toUpperCase()} />
+            <Detail
+              label="Category"
+              value={data.transactionCategory || "In-App"}
+              capitalize
+            />
             <Detail label="Payment Intent ID" value={data.paymentIntentId} />
             <Detail label="Created At" value={formatDate(data.createdAt)} />
             <Detail label="Updated At" value={formatDate(data.updatedAt)} />
@@ -813,10 +819,11 @@ export default function PaymentPage() {
       setIsLoading(false);
       return;
     }
-
+  
     try {
       const headers = { Authorization: `Bearer ${token}` };
-
+  
+      // Fetch Stripe transactions
       const stripeRes = await fetch(
         "https://limpiar-backend.onrender.com/api/payments",
         { headers }
@@ -824,15 +831,17 @@ export default function PaymentPage() {
       if (!stripeRes.ok) {
         throw new Error(`Stripe API error! status: ${stripeRes.status}`);
       }
-
+  
       const stripeData = await stripeRes.json();
       const stripeTransactions = stripeData.data.map((txn: any) => ({
         ...txn,
         method: "stripe",
         description:
           txn.description || `Payment of $${txn.amount.toFixed(2)} via Stripe`,
+        transactionCategory: txn.transactionCategory || "in-app transfer", // Updated fallback
       }));
-
+  
+      // Fetch wallet transactions
       const walletRes = await fetch(
         "https://limpiar-backend.onrender.com/api/wallets/",
         { headers }
@@ -840,13 +849,13 @@ export default function PaymentPage() {
       if (!walletRes.ok) {
         throw new Error(`Wallet API error! status: ${walletRes.status}`);
       }
-
+  
       const walletData = await walletRes.json();
-
+  
       const walletTransactions = await Promise.all(
         walletData.wallets.flatMap(async (wallet: any) => {
           if (wallet.transactions.length === 0) return [];
-
+  
           const userId = wallet.userId;
           let userData = { fullName: "Unknown", email: "N/A" };
           if (userId) {
@@ -858,7 +867,7 @@ export default function PaymentPage() {
               userData = await userRes.json();
             }
           }
-
+  
           return wallet.transactions.map((txn: any) => {
             const fallbackDesc = `Wallet payment of $${txn.amount.toFixed(2)}`;
             const description =
@@ -866,7 +875,7 @@ export default function PaymentPage() {
               (txn.description && txn.description.trim()) ||
               fallbackDesc;
             const isCompleted = description === "Task done and booking completed. Payment processed.";
-
+  
             return {
               _id: txn._id,
               userId: {
@@ -889,18 +898,19 @@ export default function PaymentPage() {
               method: "wallet",
               description,
               reason: txn.reason || "N/A",
+              transactionCategory: txn.transactionCategory || "in-app transfer", // Updated fallback
             };
           });
         })
       );
-
+  
       const filteredWalletTransactions = walletTransactions.flat().filter(Boolean);
       const allTransactions = [...stripeTransactions, ...filteredWalletTransactions];
-
+  
       allTransactions.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-
+  
       setTransactions(allTransactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
