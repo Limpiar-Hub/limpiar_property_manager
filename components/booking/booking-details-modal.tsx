@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2} from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -9,8 +9,8 @@ interface BookingDetailsModalProps {
   booking: {
     _id: string;
     booking: Partial<Booking>;
-    propertyManagerId?: string; // Just the ID as a string
-    propertyManager?: { fullName: string; email: string; phoneNumber: string }; // The actual user data
+    propertyManagerId?: string;
+    propertyManager?: { fullName: string; email: string; phoneNumber: string };
     propertyId?: { name: string; address: string; type: string; subType: string };
     cleanerId?: { fullName: string; phoneNumber: string; email: string };
     cleaningBusinessId?: string;
@@ -55,7 +55,6 @@ export function BookingDetailsModal({
 
   useEffect(() => {
     if (booking) {
-      // Use propertyManager directly instead of propertyManagerId
       setPropertyManager({
         fullName: booking.propertyManager?.fullName || "N/A",
         email: booking.propertyManager?.email || "N/A",
@@ -94,7 +93,7 @@ export function BookingDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] p-0">
+      <DialogContent className="sm:max-w-[600px] p-0" closeButton={false}>
         <DialogTitle className="sr-only">
           {isRequest ? "Booking Request" : "Booking Details"}
         </DialogTitle>
@@ -108,32 +107,36 @@ export function BookingDetailsModal({
           <div className="flex items-center gap-2">
             {!isRequest && (
               <>
-                <button
-                  onClick={onEdit}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <Pencil className="h-5 w-5 text-gray-500" />
-                </button>
-                <button
-                  onClick={onDelete}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <Trash2 className="h-5 w-5 text-gray-500" />
-                </button>
+             
               </>
             )}
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full"
-            >
-              <X className="h-5 w-5" />
-            </button>
+          
           </div>
         </div>
 
         <div className="p-6 max-h-[80vh] overflow-y-auto">
           <div className="space-y-6">
-            <h3 className="font-medium">Booking Information</h3>
+          <div className="flex items-center justify-between">
+  <h3 className="font-medium">Booking Information</h3>
+  {!isRequest && (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={onEdit}
+        className="p-2 hover:bg-gray-100 rounded-full"
+      >
+        <Pencil className="h-5 w-5 text-gray-500" />
+      </button>
+      <button
+        onClick={onDelete}
+        className="p-2 hover:bg-gray-100 rounded-full"
+      >
+        <Trash2 className="h-5 w-5 text-gray-500" />
+      </button>
+    </div>
+  )}
+</div>
+
+            
 
             <div className="space-y-4">
               <div>
@@ -207,7 +210,7 @@ export function BookingDetailsModal({
 
               {!isRequest && (
                 <div>
-                  <h4 className="text-sm text-gray-500">Status</h4>
+                  <h4 className="s text-gray-500">Status</h4>
                   <span
                     className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${getStatusColor(
                       booking.status
