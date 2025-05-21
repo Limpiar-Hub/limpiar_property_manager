@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { Search, Plus, Loader2 } from "lucide-react";
+import { Search, Plus, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { BookingRequestModal } from "@/components/booking/booking-request-modal";
 import { BookingDetailsModal } from "@/components/booking/booking-details-modal";
 import { AssignBusinessModal } from "@/components/cleaning-business/assign-business-modal";
@@ -15,7 +17,6 @@ interface User {
   avatar?: string;
   email?: string;
   phoneNumber?: string;
-
 }
 
 interface TimelineEvent {
@@ -47,20 +48,38 @@ interface CleaningBusiness {
   fullName: string;
 }
 
+interface Cleaner {
+  _id: string;
+  fullName: string;
+  phoneNumber: string;
+  email: string;
+  worker_id: string;
+  identityVerified: boolean;
+  createdAt: string;
+  cleaningBusinessId?: string;
+  cleaningBusinessName?: string;
+}
+
 export default function BookingPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "inactive">("pending");
   const [searchQuery, setSearchQuery] = useState("");
+  const [cleanerSearchQuery, setCleanerSearchQuery] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<Partial<Booking> | null>(null);
+  const [selectedCleaner, setSelectedCleaner] = useState<Cleaner | null>(null);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isCleanerModalOpen, setIsCleanerModalOpen] = useState(false);
+  const [isBiodataModalOpen, setIsBiodataModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
+  const [cleaners, setCleaners] = useState<Cleaner[]>([]);
+  const [filteredCleaners, setFilteredCleaners] = useState<Cleaner[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [selectedPrice, setSelectedPrice] = useState<number | null>(null); // New state for price
+  const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
   const [businessList, setBusinessList] = useState<CleaningBusiness[]>([]);
 
   const fetchBookingList = useCallback(async () => {
@@ -71,7 +90,7 @@ export default function BookingPage() {
       if (!token) {
         throw new Error("No authentication token found");
       }
-  
+
       const response = await fetch(
         "https://limpiar-backend.onrender.com/api/bookings",
         {
@@ -82,26 +101,24 @@ export default function BookingPage() {
           },
         }
       );
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-  
+
       const data = await response.json();
-  
+
       const mappedBookings = (data.data || []).map((booking: any) => ({
         ...booking,
         propertyManagerId: booking.userId,
-        propertyManager: booking.user, 
+        propertyManager: booking.user,
       }));
-      
+
       const sortedBookings = mappedBookings.sort((a, b) => {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); 
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-      
+
       setBookings(sortedBookings);
-      
-      
     } catch (error) {
       console.error("Error fetching bookings:", error);
       setError(error instanceof Error ? error.message : "An unknown error occurred");
@@ -116,14 +133,14 @@ export default function BookingPage() {
       setIsLoading(false);
     }
   }, []);
-  
+
   const fetchCleaningBusinesses = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found");
       }
-  
+
       const response = await fetch(
         "https://limpiar-backend.onrender.com/api/users/cleaning-businesses",
         {
@@ -134,22 +151,18 @@ export default function BookingPage() {
           },
         }
       );
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-  
+
       const data = await response.json();
-      console.log("Raw cleaning businesses response:", data); // Keep for debugging
-  
-      // Map the response to the correct structure
       const businesses = data.map((business: any) => ({
         _id: business._id,
-        fullName: business.fullName, // Use fullName instead of name
+        fullName: business.fullName,
       }));
-  
-      setBusinessList(businesses); // Set the cleaned up list
-      console.log("Fetched cleaning businesses:", businesses); // Check the mapped result
+
+      setBusinessList(businesses);
     } catch (error) {
       console.error("Error fetching cleaning businesses:", error);
       toast({
@@ -161,17 +174,99 @@ export default function BookingPage() {
       });
     }
   }, []);
-  
-  
-  
+
+  const fetchCleaners = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await fetch(
+        "https://limpiar-backend.onrender.com/api/cleaners/workers/ids",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: Cleaner[] = await response.json();
+      const pendingCleaners = data.filter((cleaner) => !cleaner.identityVerified);
+      setCleaners(pendingCleaners);
+      setFilteredCleaners(pendingCleaners);
+    } catch (error) {
+      console.error("Error fetching cleaners:", error);
+      toast({
+        title: "Error",
+        description: `Failed to fetch cleaners: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        variant: "destructive",
+      });
+    }
+  }, []);
+
+  const handleVerifyCleaner = async (workerId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await fetch(
+        "https://limpiar-backend.onrender.com/api/cleaners/onboard",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ worker_id: workerId }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      toast({
+        title: "Success",
+        description: result.message,
+      });
+
+      // Remove verified cleaner from the list
+      setCleaners((prev) => prev.filter((cleaner) => cleaner.worker_id !== workerId));
+      setFilteredCleaners((prev) => prev.filter((cleaner) => cleaner.worker_id !== workerId));
+      setIsBiodataModalOpen(false); // Close biodata modal if open
+    } catch (error) {
+      console.error("Error verifying cleaner:", error);
+      toast({
+        title: "Error",
+        description: `Failed to verify cleaner: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCleanerClick = (cleaner: Cleaner) => {
+    setSelectedCleaner(cleaner);
+    setIsBiodataModalOpen(true);
+  };
 
   useEffect(() => {
     fetchBookingList();
-  }, [fetchBookingList]);
-  useEffect(() => {
     fetchCleaningBusinesses();
-  }, [fetchCleaningBusinesses]);
-  
+  }, [fetchBookingList, fetchCleaningBusinesses]);
 
   useEffect(() => {
     const tabWiseBookings = bookings.filter((booking) => {
@@ -187,6 +282,13 @@ export default function BookingPage() {
     setFilteredBookings(tabWiseBookings);
   }, [activeTab, bookings]);
 
+  useEffect(() => {
+    const filtered = cleaners.filter((cleaner) =>
+      cleaner.fullName.toLowerCase().includes(cleanerSearchQuery.toLowerCase())
+    );
+    setFilteredCleaners(filtered);
+  }, [cleanerSearchQuery, cleaners]);
+
   const handleBookingClick = async (booking: Booking) => {
     if (booking.status === "Pending") {
       setSelectedBooking(booking);
@@ -195,7 +297,7 @@ export default function BookingPage() {
       try {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("No authentication token found");
-  
+
         const res = await fetch(
           `https://limpiar-backend.onrender.com/api/bookings/${booking._id}`,
           {
@@ -204,14 +306,13 @@ export default function BookingPage() {
             },
           }
         );
-  
+
         if (!res.ok) {
           throw new Error(`Failed to fetch booking details: ${res.status}`);
         }
-  
+
         const data = await res.json();
-        console.log("Fetched booking details:", data);
-  
+
         const enrichedBooking = {
           _id: data.data._id ?? "",
           propertyManagerId: data.data.propertyManagerId?._id || data.data.userId || "",
@@ -245,14 +346,14 @@ export default function BookingPage() {
             : undefined,
           cleaningBusinessId: data.data.cleaningBusinessId || "",
           serviceType: data.data.serviceType || "",
-          price: data.data.price ?? "", // Add fallback
+          price: data.data.price ?? "",
           date: data.data.date || "",
-          startTime: data.data.startTime ?? "", // Add fallback
+          startTime: data.data.startTime ?? "",
           endTime: data.data.endTime || "",
           status: data.data.status || "Pending",
-          uuid: data.data.uuid ?? "", // Add fallback
+          uuid: data.data.uuid ?? "",
         };
-  
+
         setSelectedBooking(enrichedBooking);
         setIsDetailsModalOpen(true);
       } catch (error) {
@@ -266,10 +367,9 @@ export default function BookingPage() {
       }
     }
   };
-  
 
   const handleAssignClick = (price: number) => {
-    setSelectedPrice(price); // Store the price
+    setSelectedPrice(price);
     setIsRequestModalOpen(false);
     setIsAssignModalOpen(true);
   };
@@ -283,21 +383,19 @@ export default function BookingPage() {
       });
       return;
     }
-  
+
     const payload = {
       bookingId: selectedBooking._id,
       cleaningBusinessId,
       price: selectedPrice,
     };
-  
-    console.log("Payload being sent:", payload);
-  
+
     try {
       const token = localStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found");
       }
-  
+
       const response = await fetch(
         "https://limpiar-backend.onrender.com/api/bookings/attach-cleaning-business",
         {
@@ -309,14 +407,13 @@ export default function BookingPage() {
           body: JSON.stringify(payload),
         }
       );
-  
+
       const responseData = await response.json();
-      console.log("Response from API:", responseData);
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}, message: ${responseData.message || "No additional message"}`);
       }
-  
+
       const updatedBooking: Booking = {
         ...selectedBooking,
         _id: selectedBooking._id,
@@ -330,11 +427,11 @@ export default function BookingPage() {
             time: new Date().toLocaleTimeString(),
             event: "Booking assigned to cleaning business",
             user: {
-              fullName: "Admin", // Changed from name to fullName
+              fullName: "Admin",
             },
           },
         ],
-        propertyManager: selectedBooking.propertyManager ?? { fullName: "N/A" }, // Updated to fullName
+        propertyManager: selectedBooking.propertyManager ?? { fullName: "N/A" },
         serviceType: selectedBooking.serviceType ?? "",
         property: selectedBooking.property ?? "",
         service: selectedBooking.service ?? "",
@@ -342,14 +439,14 @@ export default function BookingPage() {
         time: selectedBooking.time ?? "",
         additionalNote: selectedBooking.additionalNote,
       };
-  
+
       setBookings((prev) =>
         prev.map((b) => (b._id === selectedBooking._id ? updatedBooking : b))
       );
       setSelectedBooking(updatedBooking);
       setIsAssignModalOpen(false);
       setSelectedPrice(null);
-  
+
       toast({
         title: "Success",
         description: `Booking assigned successfully with price $${selectedPrice}`,
@@ -363,8 +460,6 @@ export default function BookingPage() {
       });
     }
   };
-  
-  
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -383,12 +478,19 @@ export default function BookingPage() {
     }
   };
 
-  const searchedBookings = filteredBookings.filter((booking) =>
-    booking.serviceType.toLowerCase().startsWith(searchQuery.toLowerCase())
-  );
+  const searchedBookings = bookings.filter((booking) => {
+    if (!searchQuery) return true; // Include all bookings if search query is empty
+    const query = searchQuery.toLowerCase();
+    return (
+      (booking.serviceType?.toLowerCase() || "").includes(query) ||
+      (booking._id?.toLowerCase() || "").includes(query)
+    );
+  });
 
-  const totalPages = Math.ceil(searchedBookings.length / rowsPerPage);
-  const paginatedBookings = searchedBookings.slice(
+  const displayBookings = searchQuery ? searchedBookings : filteredBookings;
+
+  const totalPages = Math.ceil(displayBookings.length / rowsPerPage);
+  const paginatedBookings = displayBookings.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
@@ -408,15 +510,21 @@ export default function BookingPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="search"
-                  placeholder="Search"
+                  placeholder="Search by service or ID"
                   className="pl-10 pr-4 py-2 w-full max-w-[240px] rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0082ed] focus:border-transparent"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button className="bg-[#0082ed] hover:bg-[#0082ed]/90">
+              <Button
+                className="bg-[#0082ed] hover:bg-[#0082ed]/90"
+                onClick={() => {
+                  fetchCleaners();
+                  setIsCleanerModalOpen(true);
+                }}
+              >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Property Manager
+                Add Cleaner
               </Button>
             </div>
           </div>
@@ -484,72 +592,71 @@ export default function BookingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-  {isLoading ? (
-    <tr>
-      <td colSpan={5} className="py-8">
-        <div className="flex justify-center items-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="text-gray-500 ml-2">Loading bookings...</span>
-        </div>
-      </td>
-    </tr>
-  ) : (
-    paginatedBookings.map((booking) => (
-      <tr
-        key={booking._id}
-        className="hover:bg-gray-50 cursor-pointer"
-        onClick={() => handleBookingClick(booking)}
-      >
-        <td className="py-5 px-6">
-          <input
-            type="checkbox"
-            className="rounded border-gray-300"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </td>
-        <td className="py-5 px-6">
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-gray-900">
-              {booking._id}
-            </span>
-            <span className="text-sm text-gray-500">
-              {booking.property}
-            </span>
-          </div>
-        </td>
-        <td className="py-4 px-4 text-sm text-gray-900">
-          {booking.cleaningBusinessId || "No Business Assigned"}
-        </td>
-        <td className="py-4 px-4 text-sm text-gray-900">
-          {booking.serviceType}
-        </td>
-        <td className="py-5 px-6">
-          {activeTab === "pending" && !booking.cleaningBusinessId ? (
-            <button
-              className="text-[#0082ed] hover:underline text-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedBooking(booking);
-                setIsRequestModalOpen(true);
-              }}
-            >
-              Set Price
-            </button>
-          ) : (
-            <span
-              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                booking.status
-              )}`}
-            >
-              {booking.status}
-            </span>
-          )}
-        </td>
-      </tr>
-    ))
-  )}
-</tbody>
-
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={5} className="py-8">
+                        <div className="flex justify-center items-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          <span className="text-gray-500 ml-2">Loading bookings...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedBookings.map((booking) => (
+                      <tr
+                        key={booking._id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleBookingClick(booking)}
+                      >
+                        <td className="py-5 px-6">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </td>
+                        <td className="py-5 px-6">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900">
+                              {booking._id}
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              {booking.property}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-900">
+                          {booking.cleaningBusinessId || "No Business Assigned"}
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-900">
+                          {booking.serviceType}
+                        </td>
+                        <td className="py-5 px-6">
+                          {activeTab === "pending" && !booking.cleaningBusinessId ? (
+                            <button
+                              className="text-[#0082ed] hover:underline text-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedBooking(booking);
+                                setIsRequestModalOpen(true);
+                              }}
+                            >
+                              Set Price
+                            </button>
+                          ) : (
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                booking.status
+                              )}`}
+                            >
+                              {booking.status}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
               </table>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
@@ -597,35 +704,169 @@ export default function BookingPage() {
       </div>
 
       {selectedBooking && (
-  <>
-    <BookingRequestModal
-      isOpen={isRequestModalOpen}
-      onClose={() => {
-        setIsRequestModalOpen(false);
-        setSelectedPrice(null);
-      }}
-      bookingId={selectedBooking._id ?? ""} // Add fallback
-      onDecline={() => setIsRequestModalOpen(false)}
-      onAssign={handleAssignClick}
-    />
-    <BookingDetailsModal
-      isOpen={isDetailsModalOpen}
-      onClose={() => setIsDetailsModalOpen(false)}
-      booking={selectedBooking}
-    />
-    <AssignBusinessModal
-      isOpen={isAssignModalOpen}
-      onClose={() => {
-        setIsAssignModalOpen(false);
-        setSelectedPrice(null);
-      }}
-      onAssign={handleAssignBusiness}
-      businesses={businessList}
-    />
-  </>
-)}
-    </div>
+        <>
+          <BookingRequestModal
+            isOpen={isRequestModalOpen}
+            onClose={() => {
+              setIsRequestModalOpen(false);
+              setSelectedPrice(null);
+            }}
+            bookingId={selectedBooking._id ?? ""}
+            onDecline={() => setIsRequestModalOpen(false)}
+            onAssign={handleAssignClick}
+          />
+          <BookingDetailsModal
+            isOpen={isDetailsModalOpen}
+            onClose={() => setIsDetailsModalOpen(false)}
+            booking={selectedBooking}
+          />
+          <AssignBusinessModal
+            isOpen={isAssignModalOpen}
+            onClose={() => {
+              setIsAssignModalOpen(false);
+              setSelectedPrice(null);
+            }}
+            onAssign={handleAssignBusiness}
+            businesses={businessList}
+          />
+        </>
+      )}
 
-    
+      <Dialog open={isCleanerModalOpen} onOpenChange={setIsCleanerModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogTitle>Pending Cleaners</DialogTitle>
+          <DialogDescription>
+            List of cleaners awaiting verification. Click a cleaner to view details or verify to onboard.
+          </DialogDescription>
+          <div className="my-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Search cleaners by name"
+                className="pl-10"
+                value={cleanerSearchQuery}
+                onChange={(e) => setCleanerSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="max-h-[400px] overflow-y-auto">
+            {filteredCleaners.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">
+                No pending cleaners found.
+              </p>
+            ) : (
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Phone
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredCleaners.map((cleaner) => (
+                    <tr
+                      key={cleaner._id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleCleanerClick(cleaner)}
+                    >
+                      <td className="py-4 px-4 text-sm text-gray-900">
+                        {cleaner.fullName}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-900">
+                        {cleaner.email}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-900">
+                        {cleaner.phoneNumber}
+                      </td>
+                      <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleVerifyCleaner(cleaner.worker_id)}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Verify
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {selectedCleaner && (
+        <Dialog open={isBiodataModalOpen} onOpenChange={setIsBiodataModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogTitle>Cleaner Biodata</DialogTitle>
+            <DialogDescription>
+              Details for {selectedCleaner.fullName}.
+            </DialogDescription>
+            <div className="space-y-4">
+              <div>
+                <span className="font-medium text-gray-700">Full Name:</span>
+                <p className="text-gray-900">{selectedCleaner.fullName}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Email:</span>
+                <p className="text-gray-900">{selectedCleaner.email}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Phone Number:</span>
+                <p className="text-gray-900">{selectedCleaner.phoneNumber}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Worker ID:</span>
+                <p className="text-gray-900">{selectedCleaner.worker_id}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Identity Verified:</span>
+                <p className="text-gray-900">{selectedCleaner.identityVerified ? "Yes" : "No"}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Created At:</span>
+                <p className="text-gray-900">
+                  {new Date(selectedCleaner.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Cleaning Business ID:</span>
+                <p className="text-gray-900">{selectedCleaner.cleaningBusinessId || "N/A"}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Cleaning Business Name:</span>
+                <p className="text-gray-900">{selectedCleaner.cleaningBusinessName || "N/A"}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Cleaner ID:</span>
+                <p className="text-gray-900">{selectedCleaner._id}</p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => handleVerifyCleaner(selectedCleaner.worker_id)}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Verify Cleaner
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   );
 }
