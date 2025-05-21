@@ -380,7 +380,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             <Detail label="Type" value={transaction.type} capitalize />
             <Detail
               label="Category"
-              value={transaction.transactionCategory || "N/A"}
+              value={transaction.transactionCategory || "In-App"}
               capitalize
             />
             <Detail label="Timestamp" value={formatDate(transaction.timestamp)} />
@@ -838,7 +838,7 @@ export default function PaymentPage() {
         method: "stripe",
         description:
           txn.description || `Payment of $${txn.amount.toFixed(2)} via Stripe`,
-        transactionCategory: txn.transactionCategory || "in-app transfer", // Updated fallback
+        transactionCategory: txn.transactionCategory || "In-App", // Updated fallback
       }));
   
       // Fetch wallet transactions
@@ -898,7 +898,7 @@ export default function PaymentPage() {
               method: "wallet",
               description,
               reason: txn.reason || "N/A",
-              transactionCategory: txn.transactionCategory || "in-app transfer", // Updated fallback
+              transactionCategory: txn.transactionCategory || "In-App", // Updated fallback
             };
           });
         })
