@@ -3,7 +3,7 @@
 import React from 'react';
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { Loader2, Wallet, ArrowUpCircle, DollarSign, Search  } from "lucide-react";
+import { Loader2, Wallet, ArrowDownCircle, ArrowUpCircle, Search ,Receipt } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import AdminProfile from "@/components/adminProfile";
 import { RefundModal } from "@/components/payment/RefundModal";
@@ -11,24 +11,29 @@ import { RefundModal } from "@/components/payment/RefundModal";
 
 
 interface Transaction {
-  method: any;
+  method?: any;
   _id: string;
-  userId: {
+  userId?: {
     fullName: string;
     email: string;
   };
   amount: number;
-  reason: string;
-  currency: string;
+  reason?: string;
+  currency?: string;
   status: "pending" | "succeeded" | "failed" | "approved" | "rejected" | "completed";
-  paymentIntentId: string;
-  reference: string;
-  createdAt: string;
-  updatedAt: string;
-  description: string;
-  transactionCategory: string;
+  paymentIntentId?: string;
+  reference?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  description?: string;
+  transactionCategory?: string;
+  transactionId?: string;
+  type?: string;
+  timestamp?: string;
+  from?: string;
+  to?: string;
+  walletId?: string;
 }
-
 interface Refund {
   _id: string;
   amount: number;
@@ -84,7 +89,7 @@ interface TransactionDataOther {
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  transactionData: any;
+  transactionData: TransactionData | TransactionDataWallet | TransactionDataOther | TransactionDataBackend | null;
 }
 
 interface PaymentModalProps {
@@ -103,13 +108,22 @@ interface Wallet {
   _id: string;
   userId: string | User; 
 }
-
+interface TransactionDataBackend {
+  debitTransaction?: Transaction & { fromUser: User; toUser: User };
+  creditTransaction?: Transaction & { fromUser: User; toUser: User };
+  pdf?: string;
+}
 interface WithdrawModalProps {
   isOpen: boolean;
   onClose: () => void;
   onWithdrawSuccess: () => void;
 }
-
+interface DetailProps {
+  label: string;
+  value: string | JSX.Element;
+  className?: string;
+  capitalize?: boolean;
+}
 const getAuthToken = (): string | null => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -340,10 +354,11 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 }) => {
   if (!isOpen || !transactionData) return null;
 
-  const isWalletTransaction = "transaction" in transactionData && transactionData.transaction;
-  const pdfDataUrl = transactionData.pdf
-    ? `data:application/pdf;base64,${transactionData.pdf}`
-    : null;
+  const isTransactionData = '_id' in transactionData && 'transaction' in transactionData;
+  const isWalletTransaction = 'transaction' in transactionData && 'fromUser' in transactionData && 'toUser' in transactionData;
+  const isOtherTransaction = 'data' in transactionData;
+  const isBackendTransaction = 'debitTransaction' in transactionData || 'creditTransaction' in transactionData;
+  const pdfDataUrl = transactionData.pdf ? `data:application/pdf;base64,${transactionData.pdf}` : null;
 
   const formatAmount = (amount: number) => {
     const sign = amount < 0 ? "-" : "";
@@ -352,6 +367,341 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleString();
 
+  // Validate transactionData structure
+  if (isTransactionData) {
+    const data = transactionData as TransactionData;
+    if (!data.transaction || !data.fromUser || !data.toUser) {
+      return (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Transaction Details</h2>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-red-600">Error: Invalid transaction data</p>
+          </div>
+        </div>
+      );
+    }
+  } else if (isWalletTransaction) {
+    const walletData = transactionData as TransactionDataWallet;
+    if (!walletData.transaction || !walletData.fromUser || !walletData.toUser) {
+      return (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Transaction Details</h2>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-red-600">Error: Invalid wallet transaction data</p>
+          </div>
+        </div>
+      );
+    }
+  } else if (isBackendTransaction) {
+    const backendData = transactionData as TransactionDataBackend;
+    if (!backendData.debitTransaction && !backendData.creditTransaction) {
+      return (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Transaction Details</h2>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-red-600">Error: No debit or credit transaction data provided</p>
+          </div>
+        </div>
+      );
+    }
+  } else if (isOtherTransaction) {
+    const otherData = transactionData as TransactionDataOther;
+    if (!otherData.data) {
+      return (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Transaction Details</h2>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-red-600">Error: Invalid transaction data</p>
+          </div>
+        </div>
+      );
+    }
+  } else {
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Transaction Details</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <p className="text-red-600">Error: Unrecognized transaction data format</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Backend Transaction (show both debit and credit)
+  if (isBackendTransaction) {
+    const backendData = transactionData as TransactionDataBackend;
+    const debitTransaction = backendData.debitTransaction;
+    const creditTransaction = backendData.creditTransaction;
+
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Transaction Details</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            {/* Debit Transaction Section */}
+            {debitTransaction && (
+              <div>
+                <div className="flex items-center mb-3">
+                  <ArrowDownCircle className="w-5 h-5 text-red-600 mr-2" />
+                  <h3 className="text-lg font-semibold">Debit Transaction</h3>
+                </div>
+                <Detail label="Transaction ID" value={debitTransaction.transactionId || debitTransaction._id} />
+                <Detail
+                  label="Amount"
+                  value={formatAmount(debitTransaction.amount)}
+                  className="text-red-600"
+                />
+                <Detail label="Status" value={debitTransaction.status} capitalize />
+                <Detail label="Type" value={debitTransaction.type || 'N/A'} capitalize />
+                <Detail
+                  label="Category"
+                  value={debitTransaction.transactionCategory || 'In-App'}
+                  capitalize
+                />
+                <Detail
+                  label="Description"
+                  value={debitTransaction.description || 'N/A'}
+                />
+                <Detail
+                  label="Timestamp"
+                  value={debitTransaction.timestamp ? formatDate(debitTransaction.timestamp) : 'N/A'}
+                />
+                <Detail label="From" value={debitTransaction.fromUser.fullName} />
+                <Detail label="To" value={debitTransaction.toUser.fullName} />
+                <Detail label="Wallet ID" value={debitTransaction.walletId || 'N/A'} />
+              </div>
+            )}
+
+            {/* Credit Transaction Section */}
+            {creditTransaction && (
+              <div>
+                {debitTransaction && <hr className="my-4" />}
+                <div className="flex items-center mb-3">
+                  <ArrowUpCircle className="w-5 h-5 text-green-600 mr-2" />
+                  <h3 className="text-lg font-semibold">Credit Transaction</h3>
+                </div>
+                <Detail label="Transaction ID" value={creditTransaction.transactionId || creditTransaction._id} />
+                <Detail
+                  label="Amount"
+                  value={formatAmount(creditTransaction.amount)}
+                  className="text-green-600"
+                />
+                <Detail label="Status" value={creditTransaction.status} capitalize />
+                <Detail label="Type" value={creditTransaction.type || 'N/A'} capitalize />
+                <Detail
+                  label="Category"
+                  value={creditTransaction.transactionCategory || 'In-App'}
+                  capitalize
+                />
+                <Detail
+                  label="Description"
+                  value={creditTransaction.description || 'N/A'}
+                />
+                <Detail
+                  label="Timestamp"
+                  value={creditTransaction.timestamp ? formatDate(creditTransaction.timestamp) : 'N/A'}
+                />
+                <Detail label="From" value={creditTransaction.fromUser.fullName} />
+                <Detail label="To" value={creditTransaction.toUser.fullName} />
+                <Detail label="Wallet ID" value={creditTransaction.walletId || 'N/A'} />
+              </div>
+            )}
+
+            {/* PDF Download */}
+            {pdfDataUrl && (
+              <div className="mt-4">
+                <a
+                  href={pdfDataUrl}
+                  download={`receipt-${(debitTransaction || creditTransaction)?.transactionId || (debitTransaction || creditTransaction)?._id}.pdf`}
+                  className="text-blue-600 hover:underline"
+                >
+                  Download Receipt PDF
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // TransactionData
+  if (isTransactionData) {
+    const { transaction, fromUser, toUser, receipt } = transactionData as TransactionData;
+
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Transaction Details</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center">
+              <ArrowUpCircle className="w-5 h-5 text-green-600 mr-2" />
+              <h3 className="text-lg font-semibold">Transaction</h3>
+            </div>
+            <Detail label="Transaction ID" value={transaction._id} />
+            <Detail
+              label="Amount"
+              value={formatAmount(transaction.amount)}
+              className={transaction.amount < 0 ? 'text-red-600' : 'text-green-600'}
+            />
+            <Detail label="Status" value={transaction.status} capitalize />
+            <Detail label="User" value={transaction.userId?.fullName || 'N/A'} />
+            <Detail label="Currency" value={transaction.currency?.toUpperCase() || 'USD'} />
+            <Detail
+              label="Category"
+              value={transaction.transactionCategory || 'In-App'}
+              capitalize
+            />
+            <Detail label="Payment Intent ID" value={transaction.paymentIntentId || 'N/A'} />
+            <Detail label="Reference" value={transaction.reference || 'N/A'} />
+            <Detail label="Created At" value={transaction.createdAt ? formatDate(transaction.createdAt) : 'N/A'} />
+            <Detail label="Updated At" value={transaction.updatedAt ? formatDate(transaction.updatedAt) : 'N/A'} />
+            <Detail
+              label="Description"
+              value={transaction.description || 'No description provided'}
+            />
+            <Detail label="From" value={fromUser.fullName} />
+            <Detail label="To" value={toUser.fullName} />
+
+            {receipt && (
+              <>
+                <hr className="my-4" />
+                <div className="flex items-center">
+                  <Receipt className="w-5 h-5 text-blue-600 mr-2" />
+                  <h3 className="text-lg font-semibold">Receipt</h3>
+                </div>
+                <Detail label="Receipt ID" value={receipt.receiptId} />
+                <Detail label="Date" value={formatDate(receipt.date)} />
+                <Detail
+                  label="Amount"
+                  value={formatAmount(receipt.amount)}
+                  className={receipt.amount < 0 ? 'text-red-600' : 'text-green-600'}
+                />
+                <Detail label="Status" value={receipt.status} capitalize />
+                <Detail label="From" value={receipt.fromFullName} />
+                <Detail label="To" value={receipt.toFullName} />
+                <Detail
+                  label="Description"
+                  value={
+                    receipt.description?.trim()
+                      ? receipt.description
+                      : `Transaction of ${formatAmount(receipt.amount)}`
+                  }
+                />
+              </>
+            )}
+
+            {pdfDataUrl && (
+              <div>
+                <a
+                  href={pdfDataUrl}
+                  download={`receipt-${receipt?.receiptId || transaction._id}.pdf`}
+                  className="text-blue-600 hover:underline"
+                >
+                  Download Receipt PDF
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Wallet Transaction
   if (isWalletTransaction) {
     const { transaction, fromUser, toUser, receipt } = transactionData as TransactionDataWallet;
 
@@ -374,13 +724,21 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           </div>
 
           <div className="space-y-4">
+            <div className="flex items-center">
+              <ArrowDownCircle className="w-5 h-5 text-red-600 mr-2" />
+              <h3 className="text-lg font-semibold">Wallet Transaction</h3>
+            </div>
             <Detail label="Transaction ID" value={transaction.transactionId} />
-            <Detail label="Amount" value={formatAmount(transaction.amount)} />
+            <Detail
+              label="Amount"
+              value={formatAmount(transaction.amount)}
+              className={transaction.amount < 0 ? 'text-red-600' : 'text-green-600'}
+            />
             <Detail label="Status" value={transaction.status} capitalize />
             <Detail label="Type" value={transaction.type} capitalize />
             <Detail
               label="Category"
-              value={transaction.transactionCategory || "In-App"}
+              value={transaction.transactionCategory || 'In-App'}
               capitalize
             />
             <Detail label="Timestamp" value={formatDate(transaction.timestamp)} />
@@ -389,11 +747,18 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
             {receipt && (
               <>
-                <hr />
-                <h3 className="text-lg font-semibold">Receipt</h3>
+                <hr className="my-4" />
+                <div className="flex items-center">
+                  <Receipt className="w-5 h-5 text-blue-600 mr-2" />
+                  <h3 className="text-lg font-semibold">Receipt</h3>
+                </div>
                 <Detail label="Receipt ID" value={receipt.receiptId} />
                 <Detail label="Date" value={formatDate(receipt.date)} />
-                <Detail label="Amount" value={formatAmount(receipt.amount)} />
+                <Detail
+                  label="Amount"
+                  value={formatAmount(receipt.amount)}
+                  className={receipt.amount < 0 ? 'text-red-600' : 'text-green-600'}
+                />
                 <Detail label="Status" value={receipt.status} capitalize />
                 <Detail label="From" value={receipt.fromFullName} />
                 <Detail label="To" value={receipt.toFullName} />
@@ -423,76 +788,118 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         </div>
       </div>
     );
-  } else {
-    // Other transaction type
-    const { data, receipt } = transactionData as TransactionDataOther;
+  }
 
-    return (
-      <div
-        className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-        role="dialog"
-        aria-modal="true"
+  // Other Transaction
+  const { data, receipt } = transactionData as TransactionDataOther;
+
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Transaction Details</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center">
+            <ArrowUpCircle className="w-5 h-5 text-green-600 mr-2" />
+            <h3 className="text-lg font-semibold">Transaction</h3>
+          </div>
+          <Detail label="Transaction ID" value={data._id} />
+          <Detail
+            label="Amount"
+            value={formatAmount(data.amount)}
+            className={data.amount < 0 ? 'text-red-600' : 'text-green-600'}
+          />
+          <Detail label="Status" value={data.status} capitalize />
+          <Detail label="User" value={data.userId?.fullName || 'N/A'} />
+          <Detail label="Currency" value={data.currency?.toUpperCase() || 'USD'} />
+          <Detail
+            label="Category"
+            value={data.transactionCategory || 'In-App'}
+            capitalize
+          />
+          <Detail label="Payment Intent ID" value={data.paymentIntentId || 'N/A'} />
+          <Detail label="Reference" value={data.reference || 'N/A'} />
+          <Detail label="Created At" value={data.createdAt ? formatDate(data.createdAt) : 'N/A'} />
+          <Detail label="Updated At" value={data.updatedAt ? formatDate(data.updatedAt) : 'N/A'} />
+          <Detail
+            label="Description"
+            value={data.description || 'No description provided'}
+          />
+    <Detail
+  label="Receipt"
+  value={
+    data.receiptUrl ? (
+      <a
+        href={data.receiptUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition"
       >
-        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Transaction Details</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 focus:outline-none"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
+        View Receipt
+      </a>
+    ) : (
+      'No receipt available'
+    )
+  }
+/>
 
-          <div className="space-y-4">
-            <Detail label="Transaction ID" value={data._id} />
-            <Detail label="Amount" value={formatAmount(data.amount)} />
-            <Detail label="Status" value={data.status} capitalize />
-            <Detail label="User" value={data.userId?.fullName || "N/A"} />
-            <Detail label="Currency" value={data.currency.toUpperCase()} />
-            <Detail
-              label="Category"
-              value={data.transactionCategory || "In-App"}
-              capitalize
-            />
-            <Detail label="Payment Intent ID" value={data.paymentIntentId} />
-            <Detail label="Created At" value={formatDate(data.createdAt)} />
-            <Detail label="Updated At" value={formatDate(data.updatedAt)} />
-            <Detail
-              label="Receipt"
-              value={
-                data.receiptUrl ? (
-                  <a
-                    href={data.receiptUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    View Receipt
-                  </a>
-                ) : (
-                  "No receipt available"
-                )
-              }
-            />
 
-            {pdfDataUrl && (
-              <div>
-                <a
-                  href={pdfDataUrl}
-                  download={`receipt-${receipt?.receiptId || data._id}.pdf`}
-                  className="text-blue-600 hover:underline"
-                >
-                  Download Receipt PDF
-                </a>
+          {receipt && (
+            <>
+              <hr className="my-4" />
+              <div className="flex items-center">
+                <Receipt className="w-5 h-5 text-blue-600 mr-2" />
+                <h3 className="text-lg font-semibold">Receipt</h3>
               </div>
-            )}
-          </div>
+              <Detail label="Receipt ID" value={receipt.receiptId} />
+              <Detail label="Date" value={formatDate(receipt.date)} />
+              <Detail
+                label="Amount"
+                value={formatAmount(receipt.amount)}
+                className={receipt.amount < 0 ? 'text-red-600' : 'text-green-600'}
+              />
+              <Detail label="Status" value={receipt.status} capitalize />
+              <Detail label="From" value={receipt.fromFullName} />
+              <Detail label="To" value={receipt.toFullName} />
+              <Detail
+                label="Description"
+                value={
+                  receipt.description?.trim()
+                    ? receipt.description
+                    : `Transaction of ${formatAmount(receipt.amount)}`
+                }
+              />
+            </>
+          )}
+
+          {pdfDataUrl && (
+            <div>
+              <a
+                href={pdfDataUrl}
+                download={`receipt-${receipt?.receiptId || data._id}.pdf`}
+                className="text-blue-600 hover:underline"
+              >
+                Download Receipt PDF
+              </a>
+            </div>
+          )}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 };
 
 
