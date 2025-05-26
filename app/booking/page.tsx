@@ -383,19 +383,19 @@ export default function BookingPage() {
       });
       return;
     }
-
+  
     const payload = {
       bookingId: selectedBooking._id,
       cleaningBusinessId,
       price: selectedPrice,
     };
-
+  
     try {
       const token = localStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found");
       }
-
+  
       const response = await fetch(
         "https://limpiar-backend.onrender.com/api/bookings/attach-cleaning-business",
         {
@@ -407,46 +407,39 @@ export default function BookingPage() {
           body: JSON.stringify(payload),
         }
       );
-
+  
       const responseData = await response.json();
-
+  
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}, message: ${responseData.message || "No additional message"}`);
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${
+            responseData.error || responseData.message || "No additional message"
+          }`
+        );
       }
-
+  
+      // Merge backend booking data with existing timeline plus new event
       const updatedBooking: Booking = {
         ...selectedBooking,
-        _id: selectedBooking._id,
-        cleaningBusinessId,
-        amount: selectedPrice.toString(),
-        status: "Active",
+        ...responseData.data,
         timeline: [
           ...(selectedBooking.timeline ?? []),
           {
             date: new Date().toLocaleDateString(),
             time: new Date().toLocaleTimeString(),
             event: "Booking assigned to cleaning business",
-            user: {
-              fullName: "Admin",
-            },
+            user: { fullName: "Admin" },
           },
         ],
-        propertyManager: selectedBooking.propertyManager ?? { fullName: "N/A" },
-        serviceType: selectedBooking.serviceType ?? "",
-        property: selectedBooking.property ?? "",
-        service: selectedBooking.service ?? "",
-        date: selectedBooking.date ?? "",
-        time: selectedBooking.time ?? "",
-        additionalNote: selectedBooking.additionalNote,
       };
-
+  
       setBookings((prev) =>
         prev.map((b) => (b._id === selectedBooking._id ? updatedBooking : b))
       );
       setSelectedBooking(updatedBooking);
       setIsAssignModalOpen(false);
       setSelectedPrice(null);
-
+  
       toast({
         title: "Success",
         description: `Booking assigned successfully with price $${selectedPrice}`,
@@ -455,12 +448,14 @@ export default function BookingPage() {
       console.error("Error assigning business:", error);
       toast({
         title: "Error",
-        description: `Failed to assign business: ${error instanceof Error ? error.message : "Unknown error"}`,
+        description: `Failed to assign business: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
         variant: "destructive",
       });
     }
   };
-
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Pending":
