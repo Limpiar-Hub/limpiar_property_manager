@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -20,8 +21,8 @@ interface Cleaner {
   temporary: boolean;
   createdAt: string;
   updatedAt: string;
-  tasks: any[];
-  completedTasks: any[];
+  tasks: Task[];
+  completedTasks?: any[];
   __v: number;
 }
 
@@ -38,23 +39,42 @@ interface CleaningBusiness {
   updatedAt: string;
   isVerified: boolean;
   onboardingChecklist: boolean;
-  tasks: any[];
+  tasks: string[];
 }
 
 interface Task {
   _id: string;
   taskId: string;
-  bookingId: string;
+  bookingId: {
+    _id: string;
+    propertyId?: { _id: string; name: string };
+    propertyManagerId?: string;
+    cleanerId?: string;
+    cleaningBusinessId?: string;
+    phoneNumber?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    serviceType?: string;
+    price?: number;
+    status?: string;
+    uuid?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    taskId?: string;
+    bookingId?: { _id: string; };
+  };
   status: "Done" | "Assigned" | "Pending" | "Failed";
   assignedAt: string;
+  propertyName?: string;
 }
 
 interface TaskDetails {
   _id: string;
   taskId: string;
-  propertyId: { _id: string; name: string; address: string };
-  propertyManagerId: { _id: string; fullName: string; email: string; phoneNumber: string };
-  cleanerId: { _id: string; fullName: string; phoneNumber: string; email: string; cleaningBusinessId: string };
+  propertyId?: { _id: string; name: string; address: string };
+  propertyManagerId?: { _id: string; fullName: string; email: string; phoneNumber: string };
+  cleanerId?: { _id: string; fullName: string; phoneNumber: string; email: string; cleaningBusinessId: string };
   cleaningBusinessId: string;
   phoneNumber: string;
   date: string;
@@ -87,14 +107,13 @@ function CleanerDetailsModal({ isOpen, onClose, cleaner, onReopenMainModal }: Cl
     onReopenMainModal();
   };
 
-  // Calculate completed tasks by filtering tasks with status "Done"
-  const completedTasksCount = cleaner?.tasks?.filter((task) => task.status === "Done").length ?? 0;
+  const completedTasksCount = cleaner?.tasks?.filter((task) => task?.status === "Done").length ?? 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
         className="w-full max-w-[600px] flex flex-col max-h-[min(85vh, 600px)] overflow-hidden bg-gray-900 rounded-2xl shadow-2xl animate-in fade-in-20"
-        style={{ boxSizing: 'border-box', contain: 'content' }}
+        style={{ boxSizing: "border-box", contain: "content" }}
       >
         <div className="flex-shrink-0 bg-gray-900/80 backdrop-blur-md bg-gradient-to-r from-indigo-600 to-indigo-800 p-6 rounded-t-2xl">
           <div className="flex justify-between items-center">
@@ -119,7 +138,7 @@ function CleanerDetailsModal({ isOpen, onClose, cleaner, onReopenMainModal }: Cl
                   <div
                     className="h-12 w-12 rounded-full bg-indigo-600/20 text-indigo-600 flex items-center justify-center"
                     aria-label="Cleaner profile icon"
-                    title={`${cleaner.fullName} avatar`}
+                    title={`${cleaner.fullName ?? "Unknown"} avatar`}
                   >
                     <User className="h-8 w-8" />
                   </div>
@@ -224,6 +243,7 @@ function TaskDetailsModal({
 
   const getFriendlyErrorMessage = (error: unknown): string => {
     if (error instanceof Error) {
+      console.error("Task fetch error:", error.message);
       if (error.message.includes("401") || error.message.includes("403")) {
         return "Authentication error. Please log in again.";
       }
@@ -233,11 +253,16 @@ function TaskDetailsModal({
       if (error.message.includes("network")) {
         return "Unable to connect. Please check your network.";
       }
+      return `Something went wrong: ${error.message}`;
     }
     return "Something went wrong. Please try again.";
   };
 
   const fetchTask = useCallback(async () => {
+    if (!bookingId) {
+      setError("Invalid booking ID");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -267,7 +292,7 @@ function TaskDetailsModal({
       }
 
       const data = await response.json();
-      setTask(data.data);
+      setTask(data.data ?? null);
     } catch (err) {
       console.error("Error fetching task:", err);
       const friendlyError = getFriendlyErrorMessage(err);
@@ -298,14 +323,14 @@ function TaskDetailsModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
         className="w-full max-w-[600px] flex flex-col max-h-[min(85vh, 600px)] overflow-hidden bg-gray-900 rounded-2xl shadow-2xl animate-in fade-in-20"
-        style={{ boxSizing: 'border-box', contain: 'content' }}
+        style={{ boxSizing: "border-box", contain: "content" }}
       >
         <div className="flex-shrink-0 bg-gray-900/80 backdrop-blur-md bg-gradient-to-r from-green-600 to-green-800 p-6 rounded-t-2xl">
           <div className="flex justify-between items-center">
             <h3 className="text-2xl font-bold text-white">Task Details</h3>
             <button
               aria-label="Close task details"
-              className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-green-400 transition-transform hover:scale-105"
+              className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-green-400"
               onClick={handleClose}
             >
               <X className="h-6 w-6" />
@@ -359,7 +384,7 @@ function TaskDetailsModal({
                     </p>
                     <p className="text-base whitespace-normal">
                       <span className="text-sm font-medium text-gray-200">Price: </span>
-                      <span className="text-white">{task.price ? `$${task.price}` : "N/A"}</span>
+                      <span className="text-white">{task.price != null ? `$${task.price}` : "N/A"}</span>
                     </p>
                   </div>
                 </div>
@@ -451,15 +476,19 @@ function TaskDetailsModal({
   );
 }
 
-export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: CleaningBusinessDetailsModalProps) {
+export function CleaningBusinessDetailsModal({
+  isOpen,
+  onClose,
+  business,
+}: CleaningBusinessDetailsModalProps) {
   const [fetchedBusiness, setFetchedBusiness] = useState<CleaningBusiness | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<(Task & { cleanerName?: string })[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: business.fullName,
-    email: business.email,
-    phoneNumber: business.phoneNumber,
+    fullName: business.fullName ?? "",
+    email: business.email ?? "",
+    phoneNumber: business.phoneNumber ?? "",
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -473,15 +502,17 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
 
   const getFriendlyErrorMessage = (error: unknown): string => {
     if (error instanceof Error) {
+      console.error("Business fetch error:", error.message);
       if (error.message.includes("401") || error.message.includes("403")) {
         return "Authentication error. Please log in again.";
       }
       if (error.message.includes("404")) {
-        return "Business not found. It may have been deleted.";
+        return "Business not found.";
       }
       if (error.message.includes("network")) {
         return "Unable to connect. Please check your network.";
       }
+      return `Something went wrong: ${error.message}`;
     }
     return "Something went wrong. Please try again.";
   };
@@ -508,7 +539,7 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => {});
         throw new Error(
           `API request failed with status ${response.status}: ${
             errorData.message || "Unknown error"
@@ -518,9 +549,32 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
 
       const data = await response.json();
       console.log("Fetched business data:", JSON.stringify(data, null, 2));
-      setFetchedBusiness(data);
-      const tasksFromCleaners = data.cleaners?.flatMap((cleaner: any) => cleaner.tasks || []) || [];
-      setTasks(tasksFromCleaners);
+      const businessData = data?.data ?? data;
+      setFetchedBusiness(businessData);
+
+      const tasksFromCleaners = businessData?.cleaners?.flatMap((cleaner: Cleaner) => {
+        console.log(`Processing cleaner: ${cleaner.fullName}, tasks:`, cleaner.tasks);
+        return (cleaner.tasks || []).map((task) => {
+          console.log(`Mapping task:`, task);
+          return {
+            ...task,
+            cleanerName: cleaner.fullName,
+            propertyName: task.bookingId?.propertyId?.name ?? task.propertyName,
+          };
+        });
+      }) || [];
+
+      console.log("Tasks from cleaners:", tasksFromCleaners);
+
+      const uniqueTasks = Array.from(
+        new Map(tasksFromCleaners.map((task) => [task.taskId, task])).values()
+      );
+      console.log("Unique tasks:", uniqueTasks);
+
+      setTasks(uniqueTasks);
+      if (uniqueTasks.length === 0) {
+        console.warn("No tasks found in cleaners array. Check backend response structure.");
+      }
     } catch (err) {
       console.error("Error fetching business data:", err);
       const friendlyError = getFriendlyErrorMessage(err);
@@ -543,9 +597,9 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
       console.log("Modal opened for business ID:", business._id);
       fetchBusinessData();
       setFormData({
-        fullName: business.fullName,
-        email: business.email,
-        phoneNumber: business.phoneNumber,
+        fullName: business.fullName ?? "",
+        email: business.email ?? "",
+        phoneNumber: business.phoneNumber ?? "",
       });
       setFormErrors({});
       setIsEditing(false);
@@ -578,9 +632,9 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
   const handleCancelEdit = () => {
     setIsEditing(false);
     setFormData({
-      fullName: displayBusiness.fullName,
-      email: displayBusiness.email,
-      phoneNumber: displayBusiness.phoneNumber,
+      fullName: displayBusiness.fullName ?? "",
+      email: displayBusiness.email ?? "",
+      phoneNumber: displayBusiness.phoneNumber ?? "",
     });
     setFormErrors({});
   };
@@ -621,7 +675,7 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => {});
         throw new Error(
           `API request failed with status ${response.status}: ${
             errorData.message || "Unknown error"
@@ -671,7 +725,7 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => {});
         throw new Error(
           `API request failed with status ${response.status}: ${
             errorData.message || "Unknown error"
@@ -732,7 +786,7 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
     <>
       <Dialog open={mainModalOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="w-full sm:max-w-[900px] max-h-[85vh] p-0 bg-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in-20">
-          <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md bg-gradient-to-r from-teal-600 to-teal-800 p-6 border-b border-slate-700">
+          <div className="sticky top-0 z-10 bg-gray-900/80 backdrop-blur-md bg-gradient-to-r from-teal-600 to-teal-800 p-6 border-b border-slate-700">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-white">Business Details</h2>
               <div className="flex space-x-2">
@@ -778,7 +832,7 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
               </div>
             </div>
           </div>
-          <div className="max-h-[calc(85vh-80px)] overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-teal-400 scrollbar-track-slate-800">
+          <div className="max-h-[calc(85vh-80px)] overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-teal-400 scrollbar-track-gray-800">
             {error ? (
               <div className="text-center space-y-4">
                 <p className="text-base text-red-400 break-words">{error}</p>
@@ -786,7 +840,7 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
               </div>
             ) : (
               <>
-                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-md">
+                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-sm">
                   <h3 className="text-xl font-semibold text-white mb-4">Business Information</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
@@ -798,9 +852,9 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
                             name="fullName"
                             value={formData.fullName}
                             onChange={handleInputChange}
-                            className={`mt-1 w-full px-3 py-2 bg-slate-900 border ${
-                              formErrors.fullName ? "border-red-400" : "border-slate-700"
-                            } rounded-lg text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 placeholder-gray-400`}
+                            className={`mt-1 w-full px-3 py-2 bg-gray-900 border ${
+                              formErrors.fullName ? "border-red-400" : "border-gray-700"
+                            } rounded-lg text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400`}
                             placeholder="Enter business name"
                           />
                           {formErrors.fullName && (
@@ -808,8 +862,8 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
                           )}
                         </div>
                       ) : (
-                        <p className="text-base text-white truncate" title={displayBusiness.fullName}>
-                          {displayBusiness.fullName}
+                        <p className="text-base text-white truncate" title={displayBusiness.fullName ?? ""}>
+                          {displayBusiness.fullName || "N/A"}
                         </p>
                       )}
                     </div>
@@ -827,9 +881,9 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
                             name="email"
                             value={formData.email}
                             onChange={handleInputChange}
-                            className={`mt-1 w-full px-3 py-2 bg-slate-900 border ${
-                              formErrors.email ? "border-red-400" : "border-slate-700"
-                            } rounded-lg text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 placeholder-gray-400`}
+                            className={`mt-1 w-full px-3 py-2 bg-gray-900 border ${
+                              formErrors.email ? "border-red-400" : "border-gray-700"
+                            } rounded-lg text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400`}
                             placeholder="Enter email"
                           />
                           {formErrors.email && (
@@ -837,8 +891,8 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
                           )}
                         </div>
                       ) : (
-                        <p className="text-base text-white truncate" title={displayBusiness.email}>
-                          {displayBusiness.email}
+                        <p className="text-base text-white truncate" title={displayBusiness.email ?? ""}>
+                          {displayBusiness.email || "N/A"}
                         </p>
                       )}
                     </div>
@@ -851,9 +905,9 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
                             name="phoneNumber"
                             value={formData.phoneNumber}
                             onChange={handleInputChange}
-                            className={`mt-1 w-full px-3 py-2 bg-slate-900 border ${
-                              formErrors.phoneNumber ? "border-red-400" : "border-slate-700"
-                            } rounded-lg text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 placeholder-gray-400`}
+                            className={`mt-1 w-full px-3 py-2 bg-gray-900 border ${
+                              formErrors.phoneNumber ? "border-red-400" : "border-gray-700"
+                            } rounded-lg text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400`}
                             placeholder="Enter phone number (e.g., +1234567890)"
                           />
                           {formErrors.phoneNumber && (
@@ -861,12 +915,12 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
                           )}
                         </div>
                       ) : (
-                        <p className="text-base text-white">{displayBusiness.phoneNumber}</p>
+                        <p className="text-base text-white">{displayBusiness.phoneNumber || "N/A"}</p>
                       )}
                     </div>
                   </div>
                 </section>
-                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-md">
+                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-sm">
                   <h3 className="text-xl font-semibold text-white mb-4">Status Information</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div>
@@ -883,32 +937,32 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
                     </div>
                   </div>
                 </section>
-                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-md">
+                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-sm">
                   <h3 className="text-xl font-semibold text-white mb-4">Team Members</h3>
                   {isLoading ? (
                     <div className="flex justify-center items-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-teal-400"></div>
                     </div>
                   ) : !displayBusiness.cleaners || displayBusiness.cleaners.length === 0 ? (
-                    <p className="text-base text-gray-400">No team members found for this business.</p>
-                  ) : (
-                    <div className="max-h-[300px] overflow-y-auto rounded-xl border border-slate-700 scrollbar-thin scrollbar-thumb-teal-400 scrollbar-track-slate-800">
+                      <p className="text-base text-gray-400">No team members found for this business.</p>
+                    ) : (
+                      <div className="max-h-[300px] overflow-y-auto rounded-xl border border-slate-700 scrollbar-thin scrollbar-thumb-teal-400 scrollbar-track-gray-800">
                       <table className="w-full text-base">
-                        <thead className="sticky top-0 bg-slate-900 z-10">
+                        <thead className="sticky top-0 bg-gray-900 z-10">
                           <tr className="border-b border-slate-700">
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Name</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Email</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Phone</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Worker ID</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Role</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Availability</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Verified</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Onboarding</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Temporary</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Tasks</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Completed Tasks</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Created At</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Updated At</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Name</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Email</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Phone</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Worker ID</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Role</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Availability</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Verified</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Onboarding</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Temporary</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Tasks</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Completed Tasks</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Created At</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Updated At</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -917,42 +971,42 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
                               key={cleaner._id}
                               className={`border-b border-slate-700 last:border-b-0 transition-colors cursor-pointer ${
                                 index % 2 === 0 ? "bg-gray-800/50" : "bg-gray-800"
-                              } hover:bg-teal-900/50`}
+                              } hover:bg-gray-700`}
                               onClick={() => handleCleanerClick(cleaner._id)}
-                              aria-label={`View details for cleaner ${cleaner.fullName}`}
+                              aria-label={`View details for cleaner ${cleaner.fullName ?? "Unknown"}`}
                             >
-                              <td className="py-4 px-6 text-white truncate max-w-[120px] hover:underline">
+                              <td className="py-3 px-4 text-white truncate max-w-[120px]">
                                 <div className="flex items-center space-x-2">
                                   <div
                                     className="h-5 w-5 rounded-full bg-teal-600/20 text-teal-400 flex items-center justify-center"
                                     aria-label="Cleaner avatar"
-                                    title={`${cleaner.fullName} avatar`}
+                                    title={`${cleaner.fullName || "Unknown"} avatar`}
                                   >
                                     <User className="h-4 w-4" />
                                   </div>
-                                  <span title={cleaner.fullName}>{cleaner.fullName}</span>
+                                  <span title={cleaner.fullName || ""}>{cleaner.fullName || "N/A"}</span>
                                 </div>
                               </td>
-                              <td className="py-4 px-6 text-white truncate max-w-[120px]" title={cleaner.email}>
-                                {cleaner.email}
+                              <td className="py-3 px-4 text-white truncate max-w-[120px]" title={cleaner.email || ""}>
+                                {cleaner.email || "N/A"}
                               </td>
-                              <td className="py-4 px-6 text-white truncate max-w-[100px]" title={cleaner.phoneNumber}>
-                                {cleaner.phoneNumber}
+                              <td className="py-3 px-4 text-white truncate max-w-[100px]" title={cleaner.phoneNumber || ""}>
+                                {cleaner.phoneNumber || "N/A"}
                               </td>
-                              <td className="py-4 px-6 text-white truncate max-w-[100px]" title={cleaner.worker_id}>
-                                {cleaner.worker_id}
+                              <td className="py-3 px-4 text-white truncate max-w-[100px]" title={cleaner.worker_id || ""}>
+                                {cleaner.worker_id || "N/A"}
                               </td>
-                              <td className="py-4 px-6 text-white">{cleaner.role}</td>
-                              <td className="py-4 px-6 text-white">{cleaner.availability ? "Available" : "Unavailable"}</td>
-                              <td className="py-4 px-6 text-white">{cleaner.identityVerified ? "Yes" : "No"}</td>
-                              <td className="py-4 px-6 text-white">{cleaner.onboardingChecklist ? "Completed" : "Incomplete"}</td>
-                              <td className="py-4 px-6 text-white">{cleaner.temporary ? "Yes" : "No"}</td>
-                              <td className="py-4 px-6 text-white">{cleaner.tasks?.length ?? 0} tasks</td>
-                              <td className="py-4 px-6 text-white">{cleaner.completedTasks?.length ?? 0} tasks</td>
-                              <td className="py-4 px-6 text-white truncate max-w-[120px]">
+                              <td className="py-3 px-4 text-white">{cleaner.role || "N/A"}</td>
+                              <td className="py-3 px-4 text-white">{cleaner.availability ? "Available" : "Unavailable"}</td>
+                              <td className="py-3 px-4 text-white">{cleaner.identityVerified ? "Yes" : "No"}</td>
+                              <td className="py-3 px-4 text-white">{cleaner.onboardingChecklist ? "Completed" : "Incomplete"}</td>
+                              <td className="py-3 px-4 text-white">{cleaner.temporary ? "Yes" : "No"}</td>
+                              <td className="py-3 px-4 text-white">{cleaner.tasks?.length ?? 0} tasks</td>
+                              <td className="py-3 px-4 text-white">{cleaner.completedTasks?.length ?? cleaner.tasks?.filter((task) => task?.status === "Done").length ?? 0} tasks</td>
+                              <td className="py-3 px-4 text-white truncate max-w-[120px]">
                                 {cleaner.createdAt ? new Date(cleaner.createdAt).toLocaleString() : "N/A"}
                               </td>
-                              <td className="py-4 px-6 text-white truncate max-w-[120px]">
+                              <td className="py-3 px-4 text-white truncate max-w-[120px]">
                                 {cleaner.updatedAt ? new Date(cleaner.updatedAt).toLocaleString() : "N/A"}
                               </td>
                             </tr>
@@ -962,55 +1016,65 @@ export function CleaningBusinessDetailsModal({ isOpen, onClose, business }: Clea
                     </div>
                   )}
                 </section>
-                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-md">
+                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-sm">
                   <h3 className="text-xl font-semibold text-white mb-4">Tasks</h3>
                   {isLoading ? (
                     <div className="flex justify-center items-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-teal-400"></div>
                     </div>
                   ) : tasks.length === 0 ? (
-                    <p className="text-base text-gray-400">No tasks found for this business. Check if tasks are assigned to cleaners in the backend.</p>
+                    <div className="text-center space-y-4">
+                      <p className="text-base text-gray-400">No tasks found for this business. Check if tasks are assigned to cleaners in the backend.</p>
+                      <Button variant="outline" className="border-teal-400 text-teal-400 hover:bg-teal-400 hover:text-white" onClick={fetchBusinessData}>Retry</Button>
+                    </div>
                   ) : (
-                    <div className="max-h-[300px] overflow-y-auto rounded-xl border border-slate-700 scrollbar-thin scrollbar-thumb-teal-400 scrollbar-track-slate-800">
+                    <div className="max-h-[300px] overflow-y-auto rounded-xl border border-slate-700 scrollbar-thin scrollbar-thumb-teal-400 scrollbar-track-gray-800">
                       <table className="w-full text-base">
-                        <thead className="sticky top-0 bg-slate-900 z-10">
+                        <thead className="sticky top-0 bg-gray-900 z-10">
                           <tr className="border-b border-slate-700">
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Task ID</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Booking ID</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Status</th>
-                            <th className="text-left py-4 px-6 text-gray-200 font-semibold">Assigned At</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Task ID</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Booking ID</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Cleaner</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Property</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Status</th>
+                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Assigned At</th>
                           </tr>
                         </thead>
                         <tbody>
                           {tasks.map((task, index) => (
-                            <tr
-                              key={task._id}
-                              className={`border-b border-slate-700 last:border-b-0 transition-colors cursor-pointer ${
-                                index % 2 === 0 ? "bg-gray-800/50" : "bg-gray-800"
-                              } hover:bg-teal-900/50`}
-                              onClick={() => handleTaskClick(task.bookingId)}
-                              aria-label={`View details for task with booking ID ${task.bookingId}`}
-                            >
-                              <td className="py-4 px-6 text-white truncate max-w-[150px]" title={task.taskId}>
-                                {task.taskId}
+                          <tr
+                          key={task._id}
+                          className={`border-t border-gray-200 cursor-pointer transition-transform hover:bg-gray-100 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                          onClick={() => task.bookingId?._id && handleTaskClick(task.bookingId._id)}
+                          aria-label={`View details for task with ID ${task.taskId || 'Unknown'}`}
+                        >
+                         
+                         <td className="py-4 px-4 text-gray-800 truncate max-w-[150px]" title={task.taskId || ''}>
+                                {task.taskId || "N/A"}
                               </td>
-                              <td className="py-4 px-6 text-white truncate max-w-[150px] hover:underline" title={task.bookingId}>
-                                {task.bookingId}
+                              <td className="py-4 px-4 text-gray-800 truncate max-w-[150px] hover:underline" title={task.bookingId?._id || ''}>
+                                {task.bookingId?._id || "N/A"}
                               </td>
-                              <td className="py-4 px-6">
+                              <td className="py-4 px-4 text-gray-800 truncate max-w-[120px]" title={task.cleanerName || ''}>
+                                {task.cleanerName || "N/A"}
+                              </td>
+                              <td className="py-4 px-4 text-gray-800 truncate max-w-[120px]" title={task.propertyName || ''}>
+                                {task.propertyName || "N/A"}
+                              </td>
+                              <td className="py-4 px-4">
                                 <span
                                   className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
                                     task.status === "Done"
-                                      ? "bg-green-600/20 text-green-400"
+                                      ? "bg-green-100 text-green-800"
                                       : task.status === "Assigned" || task.status === "Pending"
-                                      ? "bg-yellow-600/20 text-yellow-400"
-                                      : "bg-red-600/20 text-red-400"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
                                   }`}
                                 >
-                                  {task.status}
+                                  {task.status || "Unknown"}
                                 </span>
                               </td>
-                              <td className="py-4 px-6 text-white truncate max-w-[120px]">
+                              <td className="py-4 px-4 text-gray-800 truncate max-w-[150px]">
                                 {task.assignedAt ? new Date(task.assignedAt).toLocaleString() : "N/A"}
                               </td>
                             </tr>

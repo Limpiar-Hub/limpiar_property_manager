@@ -1,19 +1,19 @@
-import { Mail, X } from "lucide-react";
 import React from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+
+interface Limpiador {
+  _id: string;
+  fullName?: string;
+  email?: string;
+  phoneNumber?: string;
+  identityVerified?: boolean;
+  updatedAt: string;
+  cleaningBusinessId?: string; // Added, optional to align with context
+}
 
 interface LimpiadorModalProps {
-  selectedLimpiador: {
-    createdAt: string;
-    updatedAt: string; // Added updatedAt
-    serviceType: string;
-    status: string;
-    date: string;
-    startTime: string;
-    price: string;
-    email: string;
-    phoneNumber?: string; // Added phoneNumber
-    propertyId?: { name: string };
-  } | null;
+  selectedLimpiador: Limpiador | null;
   setIsModalOpen: (isOpen: boolean) => void;
   userName: string;
 }
@@ -23,80 +23,59 @@ const LimpiadorModal: React.FC<LimpiadorModalProps> = ({
   setIsModalOpen,
   userName,
 }) => {
-  if (!selectedLimpiador) return null; // Ensure modal doesn't render if no booking is selected
+  if (!selectedLimpiador) {
+    return null;
+  }
 
-  const {
-    createdAt,
-    updatedAt,
-    date,
-    email,
-    phoneNumber,
-    startTime,
-    propertyId,
-  } = selectedLimpiador;
-  console.log(selectedLimpiador);
   return (
-    <div
-      className="fixed inset-0 right-0 flex  justify-end bg-black bg-opacity-50 z-50 overflow-y-auto scrollbar-none"
-      onClick={() => setIsModalOpen(false)} // Clicking outside closes modal
-    >
-      <div
-        className="bg-white w-full max-w-md p-6 rounded-lg shadow-lg relative"
-        onClick={(e) => e.stopPropagation()} // Prevent closing on clicking inside modal
-      >
-        {/* Close Button */}
-        <button
-          className="absolute top-4 right-4 text-gray-600 hover:text-gray-800"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <X className="h-5 w-5" />
-        </button>
-
-        {/* Modal Content */}
-        <h2 className="text-xl font-semibold mb-4">Limpiador Details</h2>
-        <div className="space-y-3">
-          <p className="text-[color:var(--Neutral-Neutral500,#696E7E)] text-sm not-italic font-normal leading-[140%]">
-            Property Manager
-          </p>
-          <p className="text-[color:var(--Neutral-Neutral500,#101113)] text-sm not-italic font-normal leading-[140%]">
-            {userName}
-          </p>
-
-          <p className="text-[color:var(--Neutral-Neutral500,#696E7E)] text-sm not-italic font-normal leading-[140%]">
-            Name
-          </p>
-          <p className="text-[color:var(--Neutral-Neutral500,#101113)] text-sm not-italic font-normal leading-[140%]">
-            {propertyId?.name || "N/A"}
-          </p>
-
-          <p className="text-[color:var(--Neutral-Neutral500,#696E7E)] text-sm not-italic font-normal leading-[140%]">
-            Email
-          </p>
-          <p className="text-[color:var(--Neutral-Neutral500,#101113)] text-sm not-italic font-normal leading-[140%]">
-            {email}
-          </p>
-
-          <p className="text-[color:var(--Neutral-Neutral500,#696E7E)] text-sm not-italic font-normal leading-[140%]">
-            Phone:
-          </p>
-          <p className="text-[color:var(--Neutral-Neutral500,#101113)] text-sm not-italic font-normal leading-[140%]">
-            {phoneNumber}
-          </p>
-
-          <p className="text-[color:var(--Neutral-Neutral500,#696E7E)] text-sm not-italic font-normal leading-[140%]">
-            Updated
-          </p>
-          <p className="text-[color:var(--Neutral-Neutral500,#101113)] text-sm not-italic font-normal leading-[140%]">
-            {updatedAt}
-          </p>
-
-          <p className="text-[color:var(--Neutral-Neutral500,#696E7E)] text-sm not-italic font-normal leading-[140%]">
-            Created At
-          </p>
-          <p className="text-sm font-medium">{createdAt}</p>
+    <Dialog open={!!selectedLimpiador} onOpenChange={setIsModalOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{selectedLimpiador.fullName || userName} Details</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <span className="col-span-1 font-medium">ID:</span>
+            <span className="col-span-3">{selectedLimpiador._id}</span>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <span className="col-span-1 font-medium">Full Name:</span>
+            <span className="col-span-3">{selectedLimpiador.fullName || "N/A"}</span>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <span className="col-span-1 font-medium">Email:</span>
+            <span className="col-span-3">{selectedLimpiador.email || "N/A"}</span>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <span className="col-span-1 font-medium">Phone:</span>
+            <span className="col-span-3">{selectedLimpiador.phoneNumber || "N/A"}</span>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <span className="col-span-1 font-medium">Verified:</span>
+            <span className="col-span-3">
+              {selectedLimpiador.identityVerified ? "Yes" : "No"}
+            </span>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <span className="col-span-1 font-medium">Updated At:</span>
+            <span className="col-span-3">
+              {new Date(selectedLimpiador.updatedAt).toLocaleDateString()}
+            </span>
+          </div>
+          {selectedLimpiador.cleaningBusinessId && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <span className="col-span-1 font-medium">Business ID:</span>
+              <span className="col-span-3">{selectedLimpiador.cleaningBusinessId}</span>
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
