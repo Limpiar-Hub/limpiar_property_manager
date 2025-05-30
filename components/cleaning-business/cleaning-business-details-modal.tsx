@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -6,6 +5,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Save, X, User } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 interface Cleaner {
   _id: string;
@@ -62,7 +62,7 @@ interface Task {
     createdAt?: string;
     updatedAt?: string;
     taskId?: string;
-    bookingId?: { _id: string; };
+    bookingId?: { _id: string };
   };
   status: "Done" | "Assigned" | "Pending" | "Failed";
   assignedAt: string;
@@ -74,7 +74,7 @@ interface TaskDetails {
   taskId: string;
   propertyId?: { _id: string; name: string; address: string };
   propertyManagerId?: { _id: string; fullName: string; email: string; phoneNumber: string };
-  cleanerId?: { _id: string; fullName: string; phoneNumber: string; email: string; cleaningBusinessId: string };
+  cleanerId?: Cleaner[];
   cleaningBusinessId: string;
   phoneNumber: string;
   date: string;
@@ -112,112 +112,106 @@ function CleanerDetailsModal({ isOpen, onClose, cleaner, onReopenMainModal }: Cl
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
-        className="w-full max-w-[600px] flex flex-col max-h-[min(85vh, 600px)] overflow-hidden bg-gray-900 rounded-2xl shadow-2xl animate-in fade-in-20"
+        className="w-full max-w-[600px] flex flex-col max-h-[min(90vh, 700px)] overflow-hidden bg-white rounded-xl shadow-lg animate-in fade-in-20"
         style={{ boxSizing: "border-box", contain: "content" }}
       >
-        <div className="flex-shrink-0 bg-gray-900/80 backdrop-blur-md bg-gradient-to-r from-indigo-600 to-indigo-800 p-6 rounded-t-2xl">
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 p-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-2xl font-bold text-white">Cleaner Details</h3>
-            <button
-              aria-label="Close cleaner details"
-              className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition-transform hover:scale-105"
-              onClick={handleClose}
-            >
-              <X className="h-6 w-6" />
-            </button>
+            <h3 className="text-xl font-semibold text-gray-900">Cleaner Details</h3>
+       
           </div>
         </div>
         <div className="flex-1 p-6 min-h-0">
           <div
-            className="overflow-y-auto overflow-x-auto max-h-[calc(85vh-120px)] scrollbar-thin scrollbar-thumb-indigo-600 scrollbar-track-gray-900 bg-gray-900 p-4 rounded-xl"
+            className="overflow-y-auto max-h-[calc(90vh-120px)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white bg-white p-4 rounded-lg"
             aria-label="Cleaner details container"
           >
             {cleaner ? (
               <div className="space-y-6">
                 <div className="flex justify-center">
                   <div
-                    className="h-12 w-12 rounded-full bg-indigo-600/20 text-indigo-600 flex items-center justify-center"
+                    className="h-12 w-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"
                     aria-label="Cleaner profile icon"
                     title={`${cleaner.fullName ?? "Unknown"} avatar`}
                   >
-                    <User className="h-8 w-8" />
+                    <User className="h-6 w-6" />
                   </div>
                 </div>
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-indigo-600 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Personal Information</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Name: </span>
-                      <span className="text-white">{cleaner.fullName ?? "Unknown"}</span>
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Personal Information</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Name: </span>
+                      <span className="text-gray-900">{cleaner.fullName ?? "Unknown"}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Email: </span>
-                      <span className="text-white">{cleaner.email ?? "N/A"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Email: </span>
+                      <span className="text-gray-900">{cleaner.email ?? "N/A"}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Phone: </span>
-                      <span className="text-white">{cleaner.phoneNumber ?? "N/A"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Phone: </span>
+                      <span className="text-gray-900">{cleaner.phoneNumber ?? "N/A"}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Worker ID: </span>
-                      <span className="text-white">{cleaner.worker_id ?? "N/A"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Worker ID: </span>
+                      <span className="text-gray-900">{cleaner.worker_id ?? "N/A"}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Role: </span>
-                      <span className="text-white">{cleaner.role ?? "N/A"}</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-indigo-600 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Status</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Availability: </span>
-                      <span className="text-white">{cleaner.availability ? "Available" : "Unavailable"}</span>
-                    </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Verified: </span>
-                      <span className="text-white">{cleaner.identityVerified ? "Yes" : "No"}</span>
-                    </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Onboarding: </span>
-                      <span className="text-white">{cleaner.onboardingChecklist ? "Completed" : "Incomplete"}</span>
-                    </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Temporary: </span>
-                      <span className="text-white">{cleaner.temporary ? "Yes" : "No"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Role: </span>
+                      <span className="text-gray-900">{cleaner.role ?? "N/A"}</span>
                     </p>
                   </div>
                 </div>
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-indigo-600 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Tasks</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Total Tasks: </span>
-                      <span className="text-white">{cleaner.tasks?.length ?? 0}</span>
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Status</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Availability: </span>
+                      <span className="text-gray-900">{cleaner.availability ? "Available" : "Unavailable"}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Completed Tasks: </span>
-                      <span className="text-white">{completedTasksCount}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Verified: </span>
+                      <span className="text-gray-900">{cleaner.identityVerified ? "Yes" : "No"}</span>
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Onboarding: </span>
+                      <span className="text-gray-900">{cleaner.onboardingChecklist ? "Completed" : "Incomplete"}</span>
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Temporary: </span>
+                      <span className="text-gray-900">{cleaner.temporary ? "Yes" : "No"}</span>
                     </p>
                   </div>
                 </div>
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-indigo-600 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Timestamps</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Created: </span>
-                      <span className="text-white">{cleaner.createdAt ? new Date(cleaner.createdAt).toLocaleString() : "N/A"}</span>
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Tasks</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Total Tasks: </span>
+                      <span className="text-gray-900">{cleaner.tasks?.length ?? 0}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Updated: </span>
-                      <span className="text-white">{cleaner.updatedAt ? new Date(cleaner.updatedAt).toLocaleString() : "N/A"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Completed Tasks: </span>
+                      <span className="text-gray-900">{completedTasksCount}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Timestamps</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Created: </span>
+                      <span className="text-gray-900">{cleaner.createdAt ? new Date(cleaner.createdAt).toLocaleString() : "N/A"}</span>
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Updated: </span>
+                      <span className="text-gray-900">{cleaner.updatedAt ? new Date(cleaner.updatedAt).toLocaleString() : "N/A"}</span>
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-base text-gray-400 whitespace-normal">No cleaner data available.</p>
+              <p className="text-sm text-gray-500">No cleaner data available.</p>
             )}
           </div>
         </div>
@@ -301,7 +295,16 @@ function TaskDetailsModal({
         title: "Error",
         description: friendlyError,
         variant: err instanceof Error && (err.message.includes("401") || err.message.includes("403")) ? "destructive" : "default",
-        action: <Button variant="outline" size="sm" className="border-green-400 text-green-400 hover:bg-green-400 hover:text-white" onClick={fetchTask}>Retry</Button>,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
+            onClick={fetchTask}
+          >
+            Retry
+          </Button>
+        ),
       });
     } finally {
       setIsLoading(false);
@@ -319,155 +322,169 @@ function TaskDetailsModal({
     onReopenMainModal();
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Done":
+        return "bg-green-100 text-green-700";
+      case "Assigned":
+      case "Pending":
+        return "bg-yellow-100 text-yellow-700";
+      default:
+        return "bg-red-100 text-red-700";
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
-        className="w-full max-w-[600px] flex flex-col max-h-[min(85vh, 600px)] overflow-hidden bg-gray-900 rounded-2xl shadow-2xl animate-in fade-in-20"
+        className="w-full max-w-[600px] flex flex-col max-h-[min(90vh, 700px)] overflow-hidden bg-white rounded-xl shadow-lg animate-in fade-in-20"
         style={{ boxSizing: "border-box", contain: "content" }}
       >
-        <div className="flex-shrink-0 bg-gray-900/80 backdrop-blur-md bg-gradient-to-r from-green-600 to-green-800 p-6 rounded-t-2xl">
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 p-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-2xl font-bold text-white">Task Details</h3>
-            <button
-              aria-label="Close task details"
-              className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-green-400"
-              onClick={handleClose}
-            >
-              <X className="h-6 w-6" />
-            </button>
+            <h3 className="text-xl font-semibold text-gray-900">Task Details</h3>
+          
           </div>
         </div>
         <div className="flex-1 p-6 min-h-0">
           <div
-            className="overflow-y-auto overflow-x-auto max-h-[calc(85vh-120px)] scrollbar-thin scrollbar-thumb-green-400 scrollbar-track-gray-900 bg-gray-900 p-4 rounded-xl"
+            className="overflow-y-auto max-h-[calc(90vh-120px)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white bg-white p-4 rounded-lg"
             aria-label="Task details container"
           >
             {isLoading ? (
               <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-400"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             ) : error ? (
               <div className="text-center space-y-4">
-                <p className="text-base text-red-400 break-words">{error}</p>
-                <Button variant="outline" className="border-green-400 text-green-400 hover:bg-green-400 hover:text-white" onClick={fetchTask}>Retry</Button>
+                <p className="text-sm text-red-600">{error}</p>
+                <Button
+                  variant="outline"
+                  className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
+                  onClick={fetchTask}
+                >
+                  Retry
+                </Button>
               </div>
             ) : task ? (
               <div className="space-y-6">
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-green-700 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Task Information</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Task ID: </span>
-                      <span className="text-white">{task.taskId ?? "N/A"}</span>
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Task Information</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Task ID: </span>
+                      <span className="text-gray-900">{task.taskId ?? "N/A"}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Booking ID: </span>
-                      <span className="text-white">{bookingId ?? "N/A"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Booking ID: </span>
+                      <span className="text-gray-900">{bookingId ?? "N/A"}</span>
                     </p>
-                    <p className="text-base">
-                      <span className="text-sm font-medium text-gray-200">Status: </span>
+                    <p className="text-sm">
+                      <span className="font-medium text-gray-700">Status: </span>
                       <span
-                        className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                          task.status === "Done"
-                            ? "bg-green-600/20 text-green-400"
-                            : task.status === "Assigned" || task.status === "Pending"
-                            ? "bg-yellow-600/20 text-yellow-400"
-                            : "bg-red-600/20 text-red-400"
-                        }`}
+                        className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(task.status)}`}
                       >
                         {task.status ?? "Unknown"}
                       </span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Service Type: </span>
-                      <span className="text-white">{task.serviceType ?? "N/A"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Service Type: </span>
+                      <span className="text-gray-900">{task.serviceType ?? "N/A"}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Price: </span>
-                      <span className="text-white">{task.price != null ? `$${task.price}` : "N/A"}</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-green-700 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Schedule</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Date: </span>
-                      <span className="text-white">{task.date ? new Date(task.date).toLocaleDateString() : "N/A"}</span>
-                    </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Start Time: </span>
-                      <span className="text-white">{task.startTime ?? "N/A"}</span>
-                    </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">End Time: </span>
-                      <span className="text-white">{task.endTime ?? "N/A"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Price: </span>
+                      <span className="text-gray-900">{task.price != null ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(task.price) : "N/A"}</span>
                     </p>
                   </div>
                 </div>
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-green-700 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Property</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Name: </span>
-                      <span className="text-white">{task.propertyId?.name ?? "N/A"}</span>
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+  <h4 className="text-base font-semibold text-gray-900 mb-4">Schedule</h4>
+  <div className="grid grid-cols-1 gap-3">
+    <p className="text-sm text-gray-700">
+      <span className="font-medium">Date: </span>
+      <span className="text-gray-900">{task.date ? new Date(task.date).toLocaleDateString() : "N/A"}</span>
+    </p>
+    <p className="text-sm text-gray-700">
+      <span className="font-medium">Start Time: </span>
+      <span className="text-gray-900">{task.startTime ?? "N/A"}</span>
+    </p>
+    <p className="text-sm text-gray-700">
+      <span className="font-medium">End Time: </span>
+      <span className="text-gray-900">{task.endTime ?? "N/A"}</span>
+    </p>
+  </div>
+</div>
+
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Property</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Name: </span>
+                      <span className="text-gray-900">{task.propertyId?.name ?? "N/A"}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Address: </span>
-                      <span className="text-white">{task.propertyId?.address ?? "N/A"}</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-green-700 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Property Manager</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Name: </span>
-                      <span className="text-white">{task.propertyManagerId?.fullName ?? "N/A"}</span>
-                    </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Email: </span>
-                      <span className="text-white">{task.propertyManagerId?.email ?? "N/A"}</span>
-                    </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Phone: </span>
-                      <span className="text-white">{task.propertyManagerId?.phoneNumber ?? "N/A"}</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-green-700 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Cleaner</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Name: </span>
-                      <span className="text-white">{task.cleanerId?.fullName ?? "N/A"}</span>
-                    </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Email: </span>
-                      <span className="text-white">{task.cleanerId?.email ?? "N/A"}</span>
-                    </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Phone: </span>
-                      <span className="text-white">{task.cleanerId?.phoneNumber ?? "N/A"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Address: </span>
+                      <span className="text-gray-900">{task.propertyId?.address ?? "N/A"}</span>
                     </p>
                   </div>
                 </div>
-                <div className="w-full bg-gray-800 p-6 rounded-xl border border-green-700 shadow-md hover:shadow-lg transition-shadow">
-                  <h4 className="text-base font-medium text-gray-200 mb-4">Timestamps</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Created: </span>
-                      <span className="text-white">{task.createdAt ? new Date(task.createdAt).toLocaleString() : "N/A"}</span>
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Property Manager</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Name: </span>
+                      <span className="text-gray-900">{task.propertyManagerId?.fullName ?? "N/A"}</span>
                     </p>
-                    <p className="text-base whitespace-normal">
-                      <span className="text-sm font-medium text-gray-200">Updated: </span>
-                      <span className="text-white">{task.updatedAt ? new Date(task.updatedAt).toLocaleString() : "N/A"}</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Email: </span>
+                      <span className="text-gray-900">{task.propertyManagerId?.email ?? "N/A"}</span>
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Phone: </span>
+                      <span className="text-gray-900">{task.propertyManagerId?.phoneNumber ?? "N/A"}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Assigned Cleaners</h4>
+                  {Array.isArray(task.cleaners) && task.cleaners.length > 0 ? (
+                    task.cleaners.map((cleanerWrapper, index) => {
+                      const cleaner = cleanerWrapper.cleanerId;
+                      return (
+                        <div key={cleaner._id || index} className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-medium">
+                              {cleaner.fullName ? cleaner.fullName.charAt(0).toUpperCase() : "?"}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{cleaner.fullName ?? "N/A"}</p>
+                              <p className="text-sm text-gray-600">{cleaner.email ?? "N/A"}</p>
+                              <p className="text-sm text-gray-600">{cleaner.phoneNumber ?? "N/A"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="mt-2 text-sm text-gray-500">No cleaners assigned</p>
+                  )}
+                </div>
+                <div className="w-full bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Timestamps</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Created: </span>
+                      <span className="text-gray-900">{task.createdAt ? new Date(task.createdAt).toLocaleString() : "N/A"}</span>
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Updated: </span>
+                      <span className="text-gray-900">{task.updatedAt ? new Date(task.updatedAt).toLocaleString() : "N/A"}</span>
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-base text-gray-400 break-words">No task data available.</p>
+              <p className="text-sm text-gray-500">No task data available.</p>
             )}
           </div>
         </div>
@@ -583,7 +600,7 @@ export function CleaningBusinessDetailsModal({
         title: "Error",
         description: friendlyError,
         variant: err instanceof Error && (err.message.includes("401") || err.message.includes("403")) ? "destructive" : "default",
-        action: <Button variant="outline" size="sm" className="border-teal-400 text-teal-400 hover:bg-teal-400 hover:text-white" onClick={fetchBusinessData}>Retry</Button>,
+        action: <Button variant="outline" size="sm" className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white" onClick={fetchBusinessData}>Retry</Button>,
       });
       setFetchedBusiness(null);
     } finally {
@@ -785,66 +802,75 @@ export function CleaningBusinessDetailsModal({
   return (
     <>
       <Dialog open={mainModalOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="w-full sm:max-w-[900px] max-h-[85vh] p-0 bg-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in-20">
-          <div className="sticky top-0 z-10 bg-gray-900/80 backdrop-blur-md bg-gradient-to-r from-teal-600 to-teal-800 p-6 border-b border-slate-700">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-white">Business Details</h2>
-              <div className="flex space-x-2">
-                {isEditing ? (
-                  <>
-                    <button
-                      aria-label="Save changes"
-                      className={`p-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400 ${
-                        isSaving ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
-                      onClick={handleSave}
-                      disabled={isSaving}
-                    >
-                      <Save className="h-6 w-6" />
-                    </button>
-                    <button
-                      aria-label="Cancel editing"
-                      className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                      onClick={handleCancelEdit}
-                      disabled={isSaving}
-                    >
-                      <X className="h-6 w-6" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      aria-label="Edit business"
-                      className="p-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                      onClick={handleEditToggle}
-                    >
-                      <Pencil className="h-6 w-6" />
-                    </button>
-                    <button
-                      aria-label="Delete business"
-                      className="p-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400"
-                      onClick={handleDelete}
-                    >
-                      <Trash2 className="h-6 w-6" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
+        <DialogContent className="w-full sm:max-w-[900px] max-h-[90vh] p-0 bg-white rounded-xl shadow-lg overflow-hidden animate-in fade-in-20">
+          <div className="sticky top-0 z-10 bg-white border-b border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+  <h2 className="text-xl font-semibold text-gray-900">Business Details</h2>
+
+  <div className="flex items-center space-x-2">
+    {isEditing ? (
+      <>
+        <button
+          aria-label="Save changes"
+          className={`p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+            isSaving ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          <Save className="h-5 w-5" />
+        </button>
+        <button
+          aria-label="Cancel editing"
+          className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onClick={handleCancelEdit}
+          disabled={isSaving}
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </>
+    ) : (
+      <>
+        <button
+          aria-label="Edit business"
+          className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onClick={handleEditToggle}
+        >
+          <Pencil className="h-5 w-5" />
+        </button>
+        <button
+          aria-label="Delete business"
+          className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
+          onClick={handleDelete}
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
+      </>
+    )}
+    <button
+      aria-label="Close details section"
+      className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+      onClick={onClose}
+    >
+      <X className="h-5 w-5" />
+    </button>
+  </div>
+</div>
+
           </div>
-          <div className="max-h-[calc(85vh-80px)] overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-teal-400 scrollbar-track-gray-800">
+          <div className="max-h-[calc(90vh-80px)] overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white">
             {error ? (
               <div className="text-center space-y-4">
-                <p className="text-base text-red-400 break-words">{error}</p>
-                <Button variant="outline" className="border-teal-400 text-teal-400 hover:bg-teal-400 hover:text-white" onClick={fetchBusinessData}>Retry</Button>
+                <p className="text-sm text-red-600">{error}</p>
+                <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white" onClick={fetchBusinessData}>Retry</Button>
               </div>
             ) : (
               <>
-                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-sm">
-                  <h3 className="text-xl font-semibold text-white mb-4">Business Information</h3>
+                <section className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Information</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
-                      <p className="text-sm font-medium text-gray-200">Business Name</p>
+                      <p className="text-sm font-medium text-gray-700">Business Name</p>
                       {isEditing ? (
                         <div>
                           <input
@@ -852,28 +878,28 @@ export function CleaningBusinessDetailsModal({
                             name="fullName"
                             value={formData.fullName}
                             onChange={handleInputChange}
-                            className={`mt-1 w-full px-3 py-2 bg-gray-900 border ${
-                              formErrors.fullName ? "border-red-400" : "border-gray-700"
-                            } rounded-lg text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400`}
+                            className={`mt-1 w-full px-3 py-2 bg-white border ${
+                              formErrors.fullName ? "border-red-400" : "border-gray-300"
+                            } rounded-lg text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             placeholder="Enter business name"
                           />
                           {formErrors.fullName && (
-                            <p className="mt-1 text-sm text-red-400">{formErrors.fullName}</p>
+                            <p className="mt-1 text-sm text-red-600">{formErrors.fullName}</p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-base text-white truncate" title={displayBusiness.fullName ?? ""}>
+                        <p className="text-sm text-gray-900 truncate" title={displayBusiness.fullName ?? ""}>
                           {displayBusiness.fullName || "N/A"}
                         </p>
                       )}
                     </div>
                   </div>
                 </section>
-                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-md">
-                  <h3 className="text-xl font-semibold text-white mb-4">Contact Details</h3>
+                <section className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Details</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
-                      <p className="text-sm font-medium text-gray-200">Email</p>
+                      <p className="text-sm font-medium text-gray-700">Email</p>
                       {isEditing ? (
                         <div>
                           <input
@@ -881,23 +907,23 @@ export function CleaningBusinessDetailsModal({
                             name="email"
                             value={formData.email}
                             onChange={handleInputChange}
-                            className={`mt-1 w-full px-3 py-2 bg-gray-900 border ${
-                              formErrors.email ? "border-red-400" : "border-gray-700"
-                            } rounded-lg text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400`}
+                            className={`mt-1 w-full px-3 py-2 bg-white border ${
+                              formErrors.email ? "border-red-400" : "border-gray-300"
+                            } rounded-lg text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             placeholder="Enter email"
                           />
                           {formErrors.email && (
-                            <p className="mt-1 text-sm text-red-400">{formErrors.email}</p>
+                            <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-base text-white truncate" title={displayBusiness.email ?? ""}>
+                        <p className="text-sm text-gray-900 truncate" title={displayBusiness.email ?? ""}>
                           {displayBusiness.email || "N/A"}
                         </p>
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-200">Phone</p>
+                      <p className="text-sm font-medium text-gray-700">Phone</p>
                       {isEditing ? (
                         <div>
                           <input
@@ -905,80 +931,80 @@ export function CleaningBusinessDetailsModal({
                             name="phoneNumber"
                             value={formData.phoneNumber}
                             onChange={handleInputChange}
-                            className={`mt-1 w-full px-3 py-2 bg-gray-900 border ${
-                              formErrors.phoneNumber ? "border-red-400" : "border-gray-700"
-                            } rounded-lg text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400`}
+                            className={`mt-1 w-full px-3 py-2 bg-white border ${
+                              formErrors.phoneNumber ? "border-red-400" : "border-gray-300"
+                            } rounded-lg text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                             placeholder="Enter phone number (e.g., +1234567890)"
                           />
                           {formErrors.phoneNumber && (
-                            <p className="mt-1 text-sm text-red-400">{formErrors.phoneNumber}</p>
+                            <p className="mt-1 text-sm text-red-600">{formErrors.phoneNumber}</p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-base text-white">{displayBusiness.phoneNumber || "N/A"}</p>
+                        <p className="text-sm text-gray-900">{displayBusiness.phoneNumber || "N/A"}</p>
                       )}
                     </div>
                   </div>
                 </section>
-                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-sm">
-                  <h3 className="text-xl font-semibold text-white mb-4">Status Information</h3>
+                <section className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Information</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div>
-                      <p className="text-sm font-medium text-gray-200">Availability</p>
-                      <p className="text-base text-white">{displayBusiness.availability ? "Available" : "Unavailable"}</p>
+                      <p className="text-sm font-medium text-gray-700">Availability</p>
+                      <p className="text-sm text-gray-900">{displayBusiness.availability ? "Available" : "Unavailable"}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-200">Verified</p>
-                      <p className="text-base text-white">{displayBusiness.isVerified ? "Yes" : "No"}</p>
+                      <p className="text-sm font-medium text-gray-700">Verified</p>
+                      <p className="text-sm text-gray-900">{displayBusiness.isVerified ? "Yes" : "No"}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-200">Onboarding Checklist</p>
-                      <p className="text-base text-white">{displayBusiness.onboardingChecklist ? "Completed" : "Incomplete"}</p>
+                      <p className="text-sm font-medium text-gray-700">Onboarding Checklist</p>
+                      <p className="text-sm text-gray-900">{displayBusiness.onboardingChecklist ? "Completed" : "Incomplete"}</p>
                     </div>
                   </div>
                 </section>
-                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-sm">
-                  <h3 className="text-xl font-semibold text-white mb-4">Team Members</h3>
+                <section className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Members</h3>
                   {isLoading ? (
                     <div className="flex justify-center items-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-teal-400"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                     </div>
                   ) : !displayBusiness.cleaners || displayBusiness.cleaners.length === 0 ? (
-                      <p className="text-base text-gray-400">No team members found for this business.</p>
-                    ) : (
-                      <div className="max-h-[300px] overflow-y-auto rounded-xl border border-slate-700 scrollbar-thin scrollbar-thumb-teal-400 scrollbar-track-gray-800">
-                      <table className="w-full text-base">
-                        <thead className="sticky top-0 bg-gray-900 z-10">
-                          <tr className="border-b border-slate-700">
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Name</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Email</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Phone</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Worker ID</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Role</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Availability</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Verified</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Onboarding</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Temporary</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Tasks</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Completed Tasks</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Created At</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Updated At</th>
+                    <p className="text-sm text-gray-500">No team members found for this business.</p>
+                  ) : (
+                    <div className="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-gray-50 z-10">
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Name</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Email</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Phone</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Worker ID</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Role</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Availability</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Verified</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Onboarding</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Temporary</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Tasks</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Completed Tasks</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Created At</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Updated At</th>
                           </tr>
                         </thead>
                         <tbody>
                           {displayBusiness.cleaners.map((cleaner, index) => (
                             <tr
                               key={cleaner._id}
-                              className={`border-b border-slate-700 last:border-b-0 transition-colors cursor-pointer ${
-                                index % 2 === 0 ? "bg-gray-800/50" : "bg-gray-800"
-                              } hover:bg-gray-700`}
+                              className={`border-b border-gray-200 last:border-b-0 transition-colors cursor-pointer ${
+                                index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                              } hover:bg-gray-100`}
                               onClick={() => handleCleanerClick(cleaner._id)}
                               aria-label={`View details for cleaner ${cleaner.fullName ?? "Unknown"}`}
                             >
-                              <td className="py-3 px-4 text-white truncate max-w-[120px]">
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[120px]">
                                 <div className="flex items-center space-x-2">
                                   <div
-                                    className="h-5 w-5 rounded-full bg-teal-600/20 text-teal-400 flex items-center justify-center"
+                                    className="h-5 w-5 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"
                                     aria-label="Cleaner avatar"
                                     title={`${cleaner.fullName || "Unknown"} avatar`}
                                   >
@@ -987,26 +1013,26 @@ export function CleaningBusinessDetailsModal({
                                   <span title={cleaner.fullName || ""}>{cleaner.fullName || "N/A"}</span>
                                 </div>
                               </td>
-                              <td className="py-3 px-4 text-white truncate max-w-[120px]" title={cleaner.email || ""}>
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[120px]" title={cleaner.email || ""}>
                                 {cleaner.email || "N/A"}
                               </td>
-                              <td className="py-3 px-4 text-white truncate max-w-[100px]" title={cleaner.phoneNumber || ""}>
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[100px]" title={cleaner.phoneNumber || ""}>
                                 {cleaner.phoneNumber || "N/A"}
                               </td>
-                              <td className="py-3 px-4 text-white truncate max-w-[100px]" title={cleaner.worker_id || ""}>
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[100px]" title={cleaner.worker_id || ""}>
                                 {cleaner.worker_id || "N/A"}
                               </td>
-                              <td className="py-3 px-4 text-white">{cleaner.role || "N/A"}</td>
-                              <td className="py-3 px-4 text-white">{cleaner.availability ? "Available" : "Unavailable"}</td>
-                              <td className="py-3 px-4 text-white">{cleaner.identityVerified ? "Yes" : "No"}</td>
-                              <td className="py-3 px-4 text-white">{cleaner.onboardingChecklist ? "Completed" : "Incomplete"}</td>
-                              <td className="py-3 px-4 text-white">{cleaner.temporary ? "Yes" : "No"}</td>
-                              <td className="py-3 px-4 text-white">{cleaner.tasks?.length ?? 0} tasks</td>
-                              <td className="py-3 px-4 text-white">{cleaner.completedTasks?.length ?? cleaner.tasks?.filter((task) => task?.status === "Done").length ?? 0} tasks</td>
-                              <td className="py-3 px-4 text-white truncate max-w-[120px]">
+                              <td className="py-3 px-4 text-gray-900">{cleaner.role || "N/A"}</td>
+                              <td className="py-3 px-4 text-gray-900">{cleaner.availability ? "Available" : "Unavailable"}</td>
+                              <td className="py-3 px-4 text-gray-900">{cleaner.identityVerified ? "Yes" : "No"}</td>
+                              <td className="py-3 px-4 text-gray-900">{cleaner.onboardingChecklist ? "Completed" : "Incomplete"}</td>
+                              <td className="py-3 px-4 text-gray-900">{cleaner.temporary ? "Yes" : "No"}</td>
+                              <td className="py-3 px-4 text-gray-900">{cleaner.tasks?.length ?? 0} tasks</td>
+                              <td className="py-3 px-4 text-gray-900">{cleaner.completedTasks?.length ?? cleaner.tasks?.filter((task) => task?.status === "Done").length ?? 0} tasks</td>
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[120px]">
                                 {cleaner.createdAt ? new Date(cleaner.createdAt).toLocaleString() : "N/A"}
                               </td>
-                              <td className="py-3 px-4 text-white truncate max-w-[120px]">
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[120px]">
                                 {cleaner.updatedAt ? new Date(cleaner.updatedAt).toLocaleString() : "N/A"}
                               </td>
                             </tr>
@@ -1016,65 +1042,66 @@ export function CleaningBusinessDetailsModal({
                     </div>
                   )}
                 </section>
-                <section className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-sm">
-                  <h3 className="text-xl font-semibold text-white mb-4">Tasks</h3>
+                <section className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Tasks</h3>
                   {isLoading ? (
                     <div className="flex justify-center items-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-teal-400"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                     </div>
                   ) : tasks.length === 0 ? (
                     <div className="text-center space-y-4">
-                      <p className="text-base text-gray-400">No tasks found for this business. Check if tasks are assigned to cleaners in the backend.</p>
-                      <Button variant="outline" className="border-teal-400 text-teal-400 hover:bg-teal-400 hover:text-white" onClick={fetchBusinessData}>Retry</Button>
+                      <p className="text-sm text-gray-500">No tasks found for this business. Check if tasks are assigned to cleaners in the backend.</p>
+                      <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white" onClick={fetchBusinessData}>Retry</Button>
                     </div>
                   ) : (
-                    <div className="max-h-[300px] overflow-y-auto rounded-xl border border-slate-700 scrollbar-thin scrollbar-thumb-teal-400 scrollbar-track-gray-800">
-                      <table className="w-full text-base">
-                        <thead className="sticky top-0 bg-gray-900 z-10">
-                          <tr className="border-b border-slate-700">
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Task ID</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Booking ID</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Cleaner</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Property</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Status</th>
-                            <th className="text-left py-3 px-4 text-gray-200 font-semibold">Assigned At</th>
+                    <div className="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-gray-50 z-10">
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Task ID</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Booking ID</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Cleaner</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Property</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Status</th>
+                            <th className="text-left py-3 px-4 text-gray-700 font-semibold">Assigned At</th>
                           </tr>
                         </thead>
                         <tbody>
                           {tasks.map((task, index) => (
-                          <tr
-                          key={task._id}
-                          className={`border-t border-gray-200 cursor-pointer transition-transform hover:bg-gray-100 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
-                          onClick={() => task.bookingId?._id && handleTaskClick(task.bookingId._id)}
-                          aria-label={`View details for task with ID ${task.taskId || 'Unknown'}`}
-                        >
-                         
-                         <td className="py-4 px-4 text-gray-800 truncate max-w-[150px]" title={task.taskId || ''}>
+                            <tr
+                              key={task._id}
+                              className={`border-b border-gray-200 last:border-b-0 cursor-pointer transition-colors ${
+                                index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                              } hover:bg-gray-100`}
+                              onClick={() => task.bookingId?._id && handleTaskClick(task.bookingId._id)}
+                              aria-label={`View details for task with ID ${task.taskId || "Unknown"}`}
+                            >
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[150px]" title={task.taskId || ""}>
                                 {task.taskId || "N/A"}
                               </td>
-                              <td className="py-4 px-4 text-gray-800 truncate max-w-[150px] hover:underline" title={task.bookingId?._id || ''}>
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[150px] hover:underline" title={task.bookingId?._id || ""}>
                                 {task.bookingId?._id || "N/A"}
                               </td>
-                              <td className="py-4 px-4 text-gray-800 truncate max-w-[120px]" title={task.cleanerName || ''}>
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[120px]" title={task.cleanerName || ""}>
                                 {task.cleanerName || "N/A"}
                               </td>
-                              <td className="py-4 px-4 text-gray-800 truncate max-w-[120px]" title={task.propertyName || ''}>
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[120px]" title={task.propertyName || ""}>
                                 {task.propertyName || "N/A"}
                               </td>
-                              <td className="py-4 px-4">
+                              <td className="py-3 px-4">
                                 <span
                                   className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
                                     task.status === "Done"
-                                      ? "bg-green-100 text-green-800"
+                                      ? "bg-green-100 text-green-700"
                                       : task.status === "Assigned" || task.status === "Pending"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-red-100 text-red-800"
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-red-100 text-red-700"
                                   }`}
                                 >
                                   {task.status || "Unknown"}
                                 </span>
                               </td>
-                              <td className="py-4 px-4 text-gray-800 truncate max-w-[150px]">
+                              <td className="py-3 px-4 text-gray-900 truncate max-w-[150px]">
                                 {task.assignedAt ? new Date(task.assignedAt).toLocaleString() : "N/A"}
                               </td>
                             </tr>
