@@ -311,49 +311,49 @@ export default function BookingPage() {
           throw new Error(`Failed to fetch booking details: ${res.status}`);
         }
 
-        const data = await res.json();
+        const response = await res.json();
+        const data = response.data;
 
-        const enrichedBooking = {
-          _id: data.data._id ?? "",
-          propertyManagerId: data.data.propertyManagerId?._id || data.data.userId || "",
-          propertyManager: data.data.propertyManagerId
+        console.log("Fetched booking details:", data); // Debug
+
+        const enrichedBooking: Booking = {
+          _id: data._id || "",
+          uuid: data.uuid || data.booking?.uuid || "",
+          serviceType: data.serviceType || data.booking?.serviceType || "",
+          price: data.price || data.booking?.price || 0,
+          date: data.date || data.booking?.date || "",
+          startTime: data.startTime || data.booking?.startTime || "",
+          endTime: data.endTime || data.booking?.endTime || "",
+          status: data.status || data.booking?.status || "Pending",
+          propertyManagerId: data.propertyManagerId || "",
+          propertyManager: data.propertyManager
             ? {
-                fullName: data.data.propertyManagerId.fullName || "N/A",
-                email: data.data.propertyManagerId.email || "N/A",
-                phoneNumber: data.data.propertyManagerId.phoneNumber || "N/A",
-              }
-            : data.data.user
-            ? {
-                fullName: data.data.user.fullName || "N/A",
-                email: data.data.user.email || "N/A",
-                phoneNumber: data.data.user.phoneNumber || "N/A",
-              }
-            : undefined,
-          propertyId: data.data.propertyId
-            ? {
-                name: data.data.propertyId.name || "",
-                address: data.data.propertyId.address || "",
-                type: data.data.propertyId.type || "",
-                subType: data.data.propertyId.subType || "",
+                fullName: data.propertyManager.fullName || "N/A",
+                email: data.propertyManager.email || "N/A",
+                phoneNumber: data.propertyManager.phoneNumber || "N/A",
               }
             : undefined,
-          cleanerId: data.data.cleanerId
+          propertyId: data.propertyId
             ? {
-                fullName: data.data.cleanerId.fullName || "N/A",
-                phoneNumber: data.data.cleanerId.phoneNumber || "N/A",
-                email: data.data.cleanerId.email || "N/A",
+                name: data.propertyId.name || "",
+                address: data.propertyId.address || "",
+                type: data.propertyId.type || "",
+                subType: data.propertyId.subType || "",
               }
             : undefined,
-          cleaningBusinessId: data.data.cleaningBusinessId || "",
-          serviceType: data.data.serviceType || "",
-          price: data.data.price ?? "",
-          date: data.data.date || "",
-          startTime: data.data.startTime ?? "",
-          endTime: data.data.endTime || "",
-          status: data.data.status || "Pending",
-          uuid: data.data.uuid ?? "",
+          cleaners: Array.isArray(data.cleaners)
+            ? data.cleaners.map((cleaner: any) => ({
+                cleanerId: cleaner.cleanerId || "",
+                fullName: cleaner.fullName || "N/A",
+                phoneNumber: cleaner.phoneNumber || "N/A",
+                email: cleaner.email || "N/A",
+              }))
+            : [],
+          cleaningBusinessId: data.cleaningBusinessId || "",
+          timeline: data.timeline || [],
         };
 
+        console.log("Enriched booking:", enrichedBooking); // Debug
         setSelectedBooking(enrichedBooking);
         setIsDetailsModalOpen(true);
       } catch (error) {
@@ -367,6 +367,7 @@ export default function BookingPage() {
       }
     }
   };
+  
 
   const handleAssignClick = (price: number) => {
     setSelectedPrice(price);

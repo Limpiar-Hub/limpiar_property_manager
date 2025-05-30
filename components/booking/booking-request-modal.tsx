@@ -17,25 +17,27 @@ interface User {
 }
 
 interface TimelineEvent {
-  date: string;
-  time: string;
-  event: string;
-  user: User;
+  date?: string;
+  // Made optional to align with potential API response
+  time?: string;
+  event?: string; // Changed from string to optional to avoid type mismatch
+  user?: User;
 }
 
 interface Property {
-  _id: string;
+  _id?: string; // Made optional for flexibility
   name: string;
   address: string;
   type: string;
   subType: string;
-  size: string;
+  size?: string; // Not in API response, so optional
 }
 
 interface Booking {
   _id: string;
-  propertyId: Property;
-  propertyManagerId?: User | string;
+  propertyId?: Property; // Changed to optional property to match API response
+  propertyManagerId?: string; // Changed to string to match API response
+  propertyManager?: User; // Added to match API response
   date: string;
   startTime: string;
   endTime: string;
@@ -51,7 +53,7 @@ interface BookingRequestModalProps {
   onClose: () => void;
   bookingId: string;
   onDecline?: () => void;
-  onAssign: (price: number) => void; // Updated to pass the price
+  onAssign: (price: number) => void;
 }
 
 export function BookingRequestModal({
@@ -67,28 +69,6 @@ export function BookingRequestModal({
   const [propertyManager, setPropertyManager] = useState<User | null>(null);
   const [amount, setAmount] = useState("");
 
-  const fetchPropertyManager = async (id: string, token: string) => {
-    try {
-      const res = await fetch(
-        `https://limpiar-backend.onrender.com/api/users/property-manager/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      const data = await res.json();
-      if (data.success && data.data) {
-        return data.data;
-      } else {
-        console.error("Property manager fetch failed:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching property manager:", error);
-    }
-    return null;
-  };
-
   useEffect(() => {
     const fetchBookingInfo = async () => {
       setLoading(true);
@@ -98,22 +78,28 @@ export function BookingRequestModal({
         setLoading(false);
         return;
       }
-  
+
       try {
         const bookingData = await fetchBookingById(token, bookingId);
+        console.log("Booking Details API Response:", bookingData); // Debug
         if (bookingData.success && bookingData.data) {
           const bookingInfo = bookingData.data;
-          console.log("Booking Details API Response:", bookingInfo);
           setBooking(bookingInfo);
           setAmount(bookingInfo.price?.toString() || "0");
-  
-          const manager = bookingInfo.propertyManagerId;
-          if (manager && typeof manager === "object") {
-            setPropertyManager(manager);
+
+          // Use propertyManager from the response if available
+          if (bookingInfo.propertyManager) {
+            setPropertyManager({
+              fullName: bookingInfo.propertyManager.fullName || "N/A",
+              email: bookingInfo.propertyManager.email || "N/A",
+              phoneNumber: bookingInfo.propertyManager.phoneNumber || "N/A",
+              avatar: bookingInfo.propertyManager.avatar, // Optional
+            });
+            console.log("Set propertyManager:", bookingInfo.propertyManager); // Debug
           } else {
-            console.warn("No property manager data found or is not an object");
+            console.warn("No propertyManager data found in response");
+            setPropertyManager(null);
           }
-  
         } else {
           console.error("Booking fetch failed:", bookingData);
         }
@@ -123,14 +109,11 @@ export function BookingRequestModal({
         setLoading(false);
       }
     };
-  
+
     if (bookingId && isOpen) {
       fetchBookingInfo();
     }
   }, [bookingId, isOpen]);
-  
-  
-  
 
   const handleAssign = () => {
     const price = parseFloat(amount);
@@ -138,7 +121,7 @@ export function BookingRequestModal({
       alert("Please enter a valid price");
       return;
     }
-    onAssign(price); // Pass the price to the parent component
+    onAssign(price);
   };
 
   if (loading) {
@@ -174,22 +157,21 @@ export function BookingRequestModal({
                 Booking Information
               </h3>
               <div className="space-y-6">
-              <div>
-  <h4 className="text-sm text-gray-500">Property Manager</h4>
-  <div className="flex items-center gap-2 mt-1">
-    {propertyManager ? (
-      <>
-        <User2 className="w-6 h-6 text-gray-500" />
-        <span className="text-sm">{propertyManager.fullName}</span>
-      </>
-    ) : (
-      <span className="text-sm text-gray-400">
-        No property manager assigned
-      </span>
-    )}
-  </div>
-</div>
-
+                <div>
+                  <h4 className="text-sm text-gray-500">Property Manager</h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    {propertyManager ? (
+                      <>
+                        <User2 className="w-6 h-6 text-gray-500" />
+                        <span className="text-sm">{propertyManager.fullName}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-400">
+                        No property manager assigned
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 <div>
                   <h4 className="text-sm text-gray-500">Property</h4>
@@ -274,10 +256,10 @@ export function BookingRequestModal({
                         <div key={index} className="flex items-start gap-2">
                           <div className="flex flex-col items-start">
                             <span className="text-sm text-gray-500">
-                              {event.date}
+                              {event.date || "N/A"}
                             </span>
                             <span className="text-sm text-gray-500">
-                              {event.time}
+                              {event.time || "N/A"}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -285,7 +267,7 @@ export function BookingRequestModal({
                               <span className="text-xs">📝</span>
                             </div>
                             <div>
-                              <span className="text-sm">{event.event} </span>
+                              <span className="text-sm">{event.event || "No event description"} </span>
                               <div className="flex items-center gap-1">
                                 {event.user ? (
                                   <>
