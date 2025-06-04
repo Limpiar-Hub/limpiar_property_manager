@@ -1,27 +1,67 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { Search, Plus, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-import { AddPropertyModal } from "@/components/property/add-property-modal";
 import { toast } from "@/components/ui/use-toast";
-import {
-  fetchProperties,
-  fetchPropertyById,
-  verifyPropertyCreation,
-  deleteProperty,
-  updateProperty,
-} from "@/services/api";
-import { PropertyDetailsModal } from "@/components/property/property-details-modal";
 
 export default function Analytics() {
+  useEffect(() => {
+    const pushDataToSheets = async () => {
+      const token = localStorage.getItem("token"); 
+
+      if (!token) {
+        toast({
+          variant: "destructive",
+          title: "Auth Error",
+          description: "No authentication token found.",
+        });
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          "https://limpiar-backend.onrender.com/api/sheets/push-to-sheets/cleaner",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error("Failed to push data to Google Sheets");
+
+        toast({
+          title: "Success",
+          description: "Analytics data updated.",
+        });
+      } catch (error) {
+        console.error("Error pushing to sheets:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to update analytics data.",
+        });
+      }
+    };
+
+    pushDataToSheets();
+  }, []);
+
   return (
-    <div className="flex   min-h-screen bg-white">
+    <div className="flex min-h-screen bg-white">
       <Sidebar />
-      <div className=" text-lg bg-green-600 ml-60 justify-center align-center flex-1 p-8">
-        <h2> welcome to Analytics Page</h2>
+      <div className="flex-1 ml-60 p-8 bg-gray-50">
+        <h2 className="text-2xl font-semibold mb-4">Welcome to Analytics Page</h2>
+        <div className="border rounded-lg shadow-lg overflow-hidden">
+          <iframe
+            className="w-full h-[80vh]"
+            src="https://lookerstudio.google.com/embed/reporting/03972241-7b04-4b68-bc18-38571af09366/page/JziMF"
+            frameBorder="0"
+            allowFullScreen
+          ></iframe>
+        </div>
       </div>
     </div>
   );
