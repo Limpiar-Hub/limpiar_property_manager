@@ -66,7 +66,7 @@ export default function Analytics() {
           <div className="border rounded-lg shadow-lg overflow-hidden">
             <iframe
               className="w-full h-[80vh]"
-              src="https://lookerstudio.google.com/embed/reporting/03972241-7b04-4b68-bc18-38571af09366/page/JziMF"
+              src="https://lookerstudio.google.com/embed/reporting/f8a76619-52d8-44d9-9a51-54d942738344/page/WXINF"
               frameBorder="0"
               allowFullScreen
             ></iframe>
