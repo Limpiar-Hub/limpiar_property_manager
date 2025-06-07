@@ -89,7 +89,7 @@ export default function BookingPage() {
   const [isButtonLoading, setIsButtonLoading] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch bookings
+  // Unchanged functions
   const fetchBookingList = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -99,31 +99,34 @@ export default function BookingPage() {
         throw new Error("No authentication token found");
       }
 
-      const response = await fetch("https://limpiar-backend.onrender.com/api/bookings", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        "https://limpiar-backend.onrender.com/api/bookings",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
+
       const mappedBookings = (data.data || []).map((booking: any) => ({
         ...booking,
         propertyManagerId: booking.userId,
         propertyManager: booking.user,
       }));
 
-      const sortedBookings = mappedBookings.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      const sortedBookings = mappedBookings.sort((a, b) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
 
       setBookings(sortedBookings);
-      setLastUpdated(Date.now());
     } catch (error) {
       console.error("Error fetching bookings:", error);
       setError(error instanceof Error ? error.message : "An unknown error occurred");
@@ -138,9 +141,8 @@ export default function BookingPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, []); // End fetchBookingList
 
-  // Fetch cleaning businesses
   const fetchCleaningBusinesses = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -181,9 +183,8 @@ export default function BookingPage() {
         className: "animate-in slide-in-from-right",
       });
     }
-  }, []);
+  }, []); // End fetchCleaningBusinesses
 
-  // Fetch cleaners
   const fetchCleaners = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -221,11 +222,9 @@ export default function BookingPage() {
         className: "animate-in slide-in-from-right",
       });
     }
-  }, []);
+  }, []); // End fetchCleaners
 
-  // Verify cleaner
   const handleVerifyCleaner = async (workerId: string) => {
-    setIsButtonLoading(workerId);
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -268,58 +267,14 @@ export default function BookingPage() {
         variant: "destructive",
         className: "animate-in slide-in-from-right",
       });
-    } finally {
-      setIsButtonLoading(null);
     }
-  };
+  }; // End handleVerifyCleaner
 
-  // Handle cleaner click
   const handleCleanerClick = (cleaner: Cleaner) => {
     setSelectedCleaner(cleaner);
     setIsBiodataModalOpen(true);
-  };
+  }; // End handleCleanerClick
 
-  // Setup live refresh
-  useEffect(() => {
-    const initialize = async () => {
-      await fetchBookingList();
-      await fetchCleaningBusinesses();
-    };
-    initialize();
-
-    if (isLive) {
-      intervalRef.current = setInterval(fetchBookingList, 30000);
-    }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [fetchBookingList, fetchCleaningBusinesses, isLive]);
-
-  // Filter bookings by tab
-  useEffect(() => {
-    const tabWiseBookings = bookings.filter((booking) => {
-      if (activeTab === "pending") {
-        return booking.status === "Pending";
-      } else if (activeTab === "active") {
-        return booking.status === "Active" || booking.status === "Confirmed";
-      } else if (activeTab === "inactive") {
-        return booking.status === "Completed" || booking.status === "Canceled";
-      }
-      return false;
-    });
-    setFilteredBookings(tabWiseBookings);
-  }, [activeTab, bookings]);
-
-  // Filter cleaners by search
-  useEffect(() => {
-    const filtered = cleaners.filter((cleaner) =>
-      cleaner.fullName.toLowerCase().includes(cleanerSearchQuery.toLowerCase())
-    );
-    setFilteredCleaners(filtered);
-  }, [cleanerSearchQuery, cleaners]);
-
-  // Handle booking click
   const handleBookingClick = async (booking: Booking) => {
     if (booking.status === "Pending") {
       setSelectedBooking(booking);
@@ -345,51 +300,67 @@ export default function BookingPage() {
         const response = await res.json();
         const data = response.data;
 
+        console.log("Fetched booking details:", data);
+
         const enrichedBooking: Booking = {
           _id: data._id || "",
+          uuid: data.uuid || data.booking?.uuid || "",
           serviceType: data.serviceType || data.booking?.serviceType || "",
+          price: data.price || data.booking?.price || 0,
+          date: data.date || data.booking?.date || "",
+          startTime: data.startTime || data.booking?.startTime || "",
+          endTime: data.endTime || data.booking?.endTime || "",
+          status: data.status || data.booking?.status || "Pending",
+          propertyManagerId: data.propertyManagerId || "",
           propertyManager: data.propertyManager
             ? {
                 fullName: data.propertyManager.fullName || "N/A",
                 email: data.propertyManager.email || "N/A",
                 phoneNumber: data.propertyManager.phoneNumber || "N/A",
               }
-            : { fullName: "N/A" },
-          propertyManagerId: data.propertyManagerId || "",
-          property: data.propertyId?.name || "",
+            : undefined,
+          propertyId: data.propertyId
+            ? {
+                name: data.propertyId.name || "",
+                address: data.propertyId.address || "",
+                type: data.propertyId.type || "",
+                subType: data.propertyId.subType || "",
+              }
+            : undefined,
+          cleaners: Array.isArray(data.cleaners)
+            ? data.cleaners.map((cleaner: any) => ({
+                cleanerId: cleaner.cleanerId || "",
+                fullName: cleaner.fullName || "N/A",
+                phoneNumber: cleaner.phoneNumber || "N/A",
+                email: cleaner.email || "N/A",
+              }))
+            : [],
           cleaningBusinessId: data.cleaningBusinessId || "",
-          cleaningBusinessName: data.cleaningBusinessName || "",
-          service: data.serviceType || "",
-          amount: data.price || "",
-          date: data.date || "",
-          time: data.startTime || "",
-          additionalNote: data.additionalNote || "",
-          status: data.status || "Pending",
           timeline: data.timeline || [],
         };
 
+        console.log("Enriched booking:", enrichedBooking);
         setSelectedBooking(enrichedBooking);
         setIsDetailsModalOpen(true);
       } catch (error) {
         console.error("Error fetching booking details:", error);
         toast({
           title: "Error",
-          description: error instanceof Error ? error.message : "Failed to fetch details",
+          description:
+            error instanceof Error ? error.message : "Failed to fetch details",
           variant: "destructive",
           className: "animate-in slide-in-from-right",
         });
       }
     }
-  };
+  }; // End handleBookingClick
 
-  // Handle assign click
   const handleAssignClick = (price: number) => {
     setSelectedPrice(price);
     setIsRequestModalOpen(false);
     setIsAssignModalOpen(true);
-  };
+  }; // End handleAssignClick
 
-  // Assign business
   const handleAssignBusiness = async (cleaningBusinessId: string) => {
     if (!selectedBooking || selectedPrice === null || !selectedBooking._id) {
       toast({
@@ -401,7 +372,6 @@ export default function BookingPage() {
       return;
     }
 
-    setIsButtonLoading(cleaningBusinessId);
     const payload = {
       bookingId: selectedBooking._id,
       cleaningBusinessId,
@@ -472,12 +442,9 @@ export default function BookingPage() {
         variant: "destructive",
         className: "animate-in slide-in-from-right",
       });
-    } finally {
-      setIsButtonLoading(null);
     }
-  };
+  }; // End handleAssignBusiness
 
-  // Get status color
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Pending":
@@ -493,15 +460,8 @@ export default function BookingPage() {
       default:
         return "bg-gray-50 text-gray-800";
     }
-  };
+  }; // End getStatusColor
 
-  // Format last updated time
-  const getLastUpdatedText = () => {
-    const secondsAgo = Math.floor((Date.now() - lastUpdated) / 1000);
-    return `Updated ${secondsAgo} seconds ago`;
-  };
-
-  // Search and pagination
   const searchedBookings = bookings.filter((booking) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -509,15 +469,67 @@ export default function BookingPage() {
       (booking.serviceType?.toLowerCase() || "").includes(query) ||
       (booking._id?.toLowerCase() || "").includes(query)
     );
-  });
+  }); // End searchedBookings
 
   const displayBookings = searchQuery ? searchedBookings : filteredBookings;
+
   const totalPages = Math.ceil(displayBookings.length / rowsPerPage);
   const paginatedBookings = displayBookings.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
-  );
+  ); // End paginatedBookings
 
+  // Live refresh setup
+  useEffect(() => {
+    const initialize = async () => {
+      await fetchBookingList();
+      await fetchCleaningBusinesses();
+      setLastUpdated(Date.now());
+    };
+    initialize();
+
+    if (isLive) {
+      intervalRef.current = setInterval(async () => {
+        await fetchBookingList();
+        setLastUpdated(Date.now());
+      }, 30000);
+    }
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [fetchBookingList, fetchCleaningBusinesses, isLive]); // End useEffect
+
+  // Update filtered bookings
+  useEffect(() => {
+    const tabWiseBookings = bookings.filter((booking) => {
+      if (activeTab === "pending") {
+        return booking.status === "Pending";
+      } else if (activeTab === "active") {
+        return booking.status === "Active" || booking.status === "Confirmed";
+      } else if (activeTab === "inactive") {
+        return booking.status === "Completed" || booking.status === "Canceled";
+      }
+      return false;
+    });
+    setFilteredBookings(tabWiseBookings);
+  }, [activeTab, bookings]); // End useEffect
+
+  // Update filtered cleaners
+  useEffect(() => {
+    const filtered = cleaners.filter((cleaner) =>
+      cleaner.fullName.toLowerCase().includes(cleanerSearchQuery.toLowerCase())
+    );
+    setFilteredCleaners(filtered);
+  }, [cleanerSearchQuery, cleaners]); // End useEffect
+
+  // Format last updated time
+  const getLastUpdatedText = () => {
+    const secondsAgo = Math.floor((Date.now() - lastUpdated) / 1000);
+    return `Updated ${secondsAgo} seconds ago`;
+  }; // End getLastUpdatedText
+
+  // Ensure proper JSX closure
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <Sidebar />
@@ -720,7 +732,9 @@ export default function BookingPage() {
                               <span className="text-sm font-medium text-gray-900">
                                 {booking._id}
                               </span>
-                              <span className="text-sm text-gray-500">{booking.property}</span>
+                              <span className="text-sm text-gray-500">
+                                {booking.property}
+                              </span>
                             </div>
                           </td>
                           <td className="py-4 px-4 text-sm text-gray-900">
@@ -800,206 +814,218 @@ export default function BookingPage() {
             </div>
           </motion.div>
         </div>
+      </div>
 
-        <AnimatePresence>
-          {selectedBooking && (
-            <>
-              <BookingRequestModal
-                isOpen={isRequestModalOpen}
-                onClose={() => {
-                  setIsRequestModalOpen(false);
-                  setSelectedPrice(null);
-                }}
-                bookingId={selectedBooking._id ?? ""}
-                onDecline={() => setIsRequestModalOpen(false)}
-                onAssign={handleAssignClick}
-              />
-              <BookingDetailsModal
-                isOpen={isDetailsModalOpen}
-                onClose={() => setIsDetailsModalOpen(false)}
-                booking={selectedBooking}
-              />
-              <AssignBusinessModal
-                isOpen={isAssignModalOpen}
-                onClose={() => {
-                  setIsAssignModalOpen(false);
-                  setSelectedPrice(null);
-                }}
-                onAssign={handleAssignBusiness}
-                businesses={businessList}
-              />
-            </>
-          )}
-        </AnimatePresence>
+      <AnimatePresence>
+        {selectedBooking && (
+          <>
+            <BookingRequestModal
+              isOpen={isRequestModalOpen}
+              onClose={() => {
+                setIsRequestModalOpen(false);
+                setSelectedPrice(null);
+              }}
+              bookingId={selectedBooking._id ?? ""}
+              onDecline={() => setIsRequestModalOpen(false)}
+              onAssign={handleAssignClick}
+            />
+            <BookingDetailsModal
+              isOpen={isDetailsModalOpen}
+              onClose={() => setIsDetailsModalOpen(false)}
+              booking={selectedBooking}
+            />
+            <AssignBusinessModal
+              isOpen={isAssignModalOpen}
+              onClose={() => {
+                setIsAssignModalOpen(false);
+                setSelectedPrice(null);
+              }}
+              onAssign={handleAssignBusiness}
+              businesses={businessList}
+            />
+          </>
+        )}
+      </AnimatePresence>
 
-        <Dialog open={isCleanerModalOpen} onOpenChange={setIsCleanerModalOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogTitle>Pending Cleaners</DialogTitle>
-            <DialogDescription>
-              List of cleaners awaiting verification. Click a cleaner to view details or verify to onboard.
-            </DialogDescription>
-            <motion.div
-              className="my-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="search"
-                  placeholder="Search cleaners by name"
-                  className="pl-10"
-                  value={cleanerSearchQuery}
-                  onChange={(e) => setCleanerSearchQuery(e.target.value)}
-                />
-              </div>
-            </motion.div>
-            <div className="max-h-[400px] overflow-y-auto">
-              <AnimatePresence>
-                {filteredCleaners.length === 0 ? (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-gray-500 text-center py-4"
-                  >
-                    No pending cleaners found.
-                  </motion.p>
-                ) : (
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Phone
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {filteredCleaners.map((cleaner) => (
-                        <motion.tr
-                          key={cleaner._id}
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleCleanerClick(cleaner)}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <td className="py-4 px-4 text-sm text-gray-900">
-                            {cleaner.fullName}
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-900">
-                            {cleaner.email}
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-900">
-                            {cleaner.phoneNumber}
-                          </td>
-                          <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={isButtonLoading === cleaner.worker_id}
-                              onClick={() => handleVerifyCleaner(cleaner.worker_id)}
-                            >
-                              {isButtonLoading === cleaner.worker_id ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              ) : (
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                              )}
-                              Verify
-                            </Button>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </AnimatePresence>
+      <Dialog open={isCleanerModalOpen} onOpenChange={setIsCleanerModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogTitle>Pending Cleaners</DialogTitle>
+          <DialogDescription>
+            List of cleaners awaiting verification. Click a cleaner to view details or verify to onboard.
+          </DialogDescription>
+          <motion.div
+            className="my-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Search cleaners by name"
+                className="pl-10"
+                value={cleanerSearchQuery}
+                onChange={(e) => setCleanerSearchQuery(e.target.value)}
+              />
             </div>
-          </DialogContent>
-        </Dialog>
-
-        <AnimatePresence>
-          {selectedCleaner && (
-            <Dialog open={isBiodataModalOpen} onOpenChange={setIsBiodataModalOpen}>
-              <DialogContent className="max-w-md">
-                <DialogTitle>Cleaner Biodata</DialogTitle>
-                <DialogDescription>Details for {selectedCleaner.fullName}.</DialogDescription>
-                <motion.div
-                  className="space-y-4"
+          </motion.div>
+          <div className="max-h-[400px] overflow-y-auto">
+            <AnimatePresence>
+              {filteredCleaners.length === 0 ? (
+                <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
+                  className="text-gray-500 text-center py-4"
                 >
-                  <div>
-                    <span className="font-medium text-gray-700">Full Name:</span>
-                    <p className="text-gray-900">{selectedCleaner.fullName}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Email:</span>
-                    <p className="text-gray-900">{selectedCleaner.email}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Phone Number:</span>
-                    <p className="text-gray-900">{selectedCleaner.phoneNumber}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Worker ID:</span>
-                    <p className="text-gray-900">{selectedCleaner.worker_id}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Identity Verified:</span>
-                    <p className="text-gray-900">{selectedCleaner.identityVerified ? "Yes" : "No"}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Created At:</span>
-                    <p className="text-gray-900">
-                      {new Date(selectedCleaner.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Cleaning Business ID:</span>
-                    <p className="text-gray-900">{selectedCleaner.cleaningBusinessId || "N/A"}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Cleaning Business Name:</span>
-                    <p className="text-gray-900">{selectedCleaner.cleaningBusinessName || "N/A"}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Cleaner ID:</span>
-                    <p className="text-gray-900">{selectedCleaner._id}</p>
-                  </div>
-                </motion.div>
-                <div className="mt-6 flex justify-end">
-                  <Button
-                    variant="outline"
-                    disabled={isButtonLoading === selectedCleaner.worker_id}
-                    onClick={() => handleVerifyCleaner(selectedCleaner.worker_id)}
-                  >
-                    {isButtonLoading === selectedCleaner.worker_id ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                    )}
-                    Verify Cleaner
-                  </Button>
+                  No pending cleaners found.
+                </motion.p>
+              ) : (
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Phone
+                      </th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredCleaners.map((cleaner) => (
+                      <motion.tr
+                        key={cleaner._id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleCleanerClick(cleaner)}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <td className="py-4 px-4 text-sm text-gray-900">
+                          {cleaner.fullName}
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-900">
+                          {cleaner.email}
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-900">
+                          {cleaner.phoneNumber}
+                        </td>
+                        <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isButtonLoading === cleaner.worker_id}
+                            onClick={() => {
+                              setIsButtonLoading(cleaner.worker_id);
+                              handleVerifyCleaner(cleaner.worker_id).finally(() => setIsButtonLoading(null));
+                            }}
+                          >
+                            {isButtonLoading === cleaner.worker_id ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                            )}
+                            Verify
+                          </Button>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </AnimatePresence>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AnimatePresence>
+        {selectedCleaner && (
+          <Dialog open={isBiodataModalOpen} onOpenChange={setIsBiodataModalOpen}>
+            <DialogContent className="max-w-md">
+              <DialogTitle>Cleaner Biodata</DialogTitle>
+              <DialogDescription>
+                Details for {selectedCleaner.fullName}.
+              </DialogDescription>
+              <motion.div
+                className="space-y-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div>
+                  <span className="font-medium text-gray-700">Full Name:</span>
+                  <p className="text-gray-900">{selectedCleaner.fullName}</p>
                 </div>
-              </DialogContent>
-            </Dialog>
-          )}
-        </AnimatePresence>
-      </div>
+                <div>
+                  <span className="font-medium text-gray-700">Email:</span>
+                  <p className="text-gray-900">{selectedCleaner.email}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Phone Number:</span>
+                  <p className="text-gray-900">{selectedCleaner.phoneNumber}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Worker ID:</span>
+                  <p className="text-gray-900">{selectedCleaner.worker_id}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Identity Verified:</span>
+                  <p className="text-gray-900">{selectedCleaner.identityVerified ? "Yes" : "No"}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Created At:</span>
+                  <p className="text-gray-900">
+                    {new Date(selectedCleaner.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Cleaning Business ID:</span>
+                  <p className="text-gray-900">{selectedCleaner.cleaningBusinessId || "N/A"}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Cleaning Business Name:</span>
+                  <p className="text-gray-900">{selectedCleaner.cleaningBusinessName || "N/A"}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Cleaner ID:</span>
+                  <p className="text-gray-900">{selectedCleaner._id}</p>
+                </div>
+              </motion.div>
+              <div className="mt-6 flex justify-end">
+                <Button
+                  variant="outline"
+                  disabled={isButtonLoading === selectedCleaner.worker_id}
+                  onClick={() => {
+                    setIsButtonLoading(selectedCleaner.worker_id);
+                    handleVerifyCleaner(selectedCleaner.worker_id).finally(() => setIsButtonLoading(null));
+                  }}
+                >
+                  {isButtonLoading === selectedCleaner.worker_id ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Verify Cleaner
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
     </div>
-  );
-}
+  ); 
+} 
+
+  
+ 
+  

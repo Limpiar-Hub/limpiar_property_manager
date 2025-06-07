@@ -4,10 +4,7 @@ import { twMerge } from "tailwind-merge"
 /**
  * Combines class names with Tailwind CSS classes
  */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
+3
 /**
  * Format date to locale string
  */
@@ -62,3 +59,6 @@ export function maskSensitiveInfo(text: string, visibleChars = 4): string {
   return masked + visible
 }
 
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
