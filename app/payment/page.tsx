@@ -161,7 +161,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     if (!routingNumber.trim() || routingNumber.length !== 9) {
       toast({
         title: "Invalid Routing Number",
@@ -170,7 +170,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
       });
       return;
     }
-
+  
     if (!accountNumber.trim() || accountNumber.length < 8 || accountNumber.length > 17) {
       toast({
         title: "Invalid Account Number",
@@ -179,7 +179,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
       });
       return;
     }
-
+  
     if (!accountHolderName.trim()) {
       toast({
         title: "Missing Account Holder Name",
@@ -188,7 +188,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
       });
       return;
     }
-
+  
     if (!amount || Number(amount) <= 0) {
       toast({
         title: "Invalid Amount",
@@ -197,19 +197,19 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
       });
       return;
     }
-
+  
     setIsSubmitting(true);
     try {
       const token = getAuthToken();
       if (!token) throw new Error("No authentication token found. Please log in.");
-
+  
       const payload = {
         routingNumber: routingNumber.trim(),
         accountNumber: accountNumber.trim(),
         accountHolderName: accountHolderName.trim(),
         amount: Number(amount),
       };
-
+  
       const res = await fetch("https://limpiar-backend.onrender.com/api/payments/withdraw", {
         method: "POST",
         headers: {
@@ -218,18 +218,29 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
         },
         body: JSON.stringify(payload),
       });
-
+  
       const data = await res.json();
-
+  
       if (!res.ok) {
+        // Check if onboarding is required
+        if (data.message === "Complete onboarding to receive payouts." && data.onboardingLink) {
+          toast({
+            title: "Onboarding Required",
+            description: "You need to complete onboarding to enable withdrawals.",
+            variant: "destructive",
+          });
+          // Redirect to the onboarding link
+          window.location.href = data.onboardingLink;
+          return;
+        }
         throw new Error(data.message || "Withdrawal failed");
       }
-
+  
       toast({
         title: "Withdrawal Success",
         description: data.message || "Withdrawal request submitted successfully",
       });
-
+  
       setRoutingNumber("");
       setAccountNumber("");
       setAccountHolderName("");
